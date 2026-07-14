@@ -28,6 +28,53 @@ object InMemoryFriendlyFootballRepository : FriendlyFootballRepository {
 
     private val matches = listOf(
         FriendlyMatch(
+            id = "match-5",
+            dateLabel = "Domingo 26 julio",
+            teamAScore = 5,
+            teamBScore = 3,
+            players = listOf(
+                MatchPlayer("alex", TeamSide.A, wasGoalkeeper = true),
+                MatchPlayer("bruno", TeamSide.A),
+                MatchPlayer("carlos", TeamSide.A),
+                MatchPlayer("dani", TeamSide.A),
+                MatchPlayer("ivan", TeamSide.B, wasGoalkeeper = true),
+                MatchPlayer("miguel", TeamSide.B),
+                MatchPlayer("pablo", TeamSide.B),
+                MatchPlayer("sergio", TeamSide.B)
+            ),
+            goals = listOf(
+                GoalEntry("bruno", TeamSide.A, 2, goalkeeperId = "ivan"),
+                GoalEntry("carlos", TeamSide.A, 1, goalkeeperId = "ivan"),
+                GoalEntry("dani", TeamSide.A, 2, goalkeeperId = "ivan"),
+                GoalEntry("miguel", TeamSide.B, 1, goalkeeperId = "alex"),
+                GoalEntry("pablo", TeamSide.B, 1, goalkeeperId = "alex"),
+                GoalEntry("sergio", TeamSide.B, 1, goalkeeperId = "alex")
+            )
+        ),
+        FriendlyMatch(
+            id = "match-4",
+            dateLabel = "Domingo 19 julio",
+            teamAScore = 2,
+            teamBScore = 5,
+            players = listOf(
+                MatchPlayer("alex", TeamSide.A),
+                MatchPlayer("ivan", TeamSide.A, wasGoalkeeper = true),
+                MatchPlayer("pablo", TeamSide.A),
+                MatchPlayer("sergio", TeamSide.A),
+                MatchPlayer("bruno", TeamSide.B),
+                MatchPlayer("carlos", TeamSide.B, wasGoalkeeper = true),
+                MatchPlayer("dani", TeamSide.B),
+                MatchPlayer("miguel", TeamSide.B)
+            ),
+            goals = listOf(
+                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "carlos"),
+                GoalEntry("sergio", TeamSide.A, 1, goalkeeperId = "carlos"),
+                GoalEntry("bruno", TeamSide.B, 2, goalkeeperId = "ivan"),
+                GoalEntry("dani", TeamSide.B, 1, goalkeeperId = "ivan"),
+                GoalEntry("miguel", TeamSide.B, 2, goalkeeperId = "ivan")
+            )
+        ),
+        FriendlyMatch(
             id = "match-3",
             dateLabel = "Domingo 12 julio",
             teamAScore = 7,
@@ -43,12 +90,13 @@ object InMemoryFriendlyFootballRepository : FriendlyFootballRepository {
                 MatchPlayer("sergio", TeamSide.B)
             ),
             goals = listOf(
-                GoalEntry("bruno", TeamSide.A, 3),
-                GoalEntry("carlos", TeamSide.A, 2),
-                GoalEntry("dani", TeamSide.A, 2),
-                GoalEntry("miguel", TeamSide.B, 2),
-                GoalEntry("pablo", TeamSide.B, 2),
-                GoalEntry("sergio", TeamSide.B, 1)
+                GoalEntry("bruno", TeamSide.A, 2, goalkeeperId = "ivan"),
+                GoalEntry("bruno", TeamSide.A, 1, goalkeeperId = "sergio"),
+                GoalEntry("carlos", TeamSide.A, 2, goalkeeperId = "ivan"),
+                GoalEntry("dani", TeamSide.A, 2, goalkeeperId = "ivan"),
+                GoalEntry("miguel", TeamSide.B, 2, goalkeeperId = "alex"),
+                GoalEntry("pablo", TeamSide.B, 2, goalkeeperId = "alex"),
+                GoalEntry("sergio", TeamSide.B, 1, goalkeeperId = "alex")
             )
         ),
         FriendlyMatch(
@@ -67,12 +115,12 @@ object InMemoryFriendlyFootballRepository : FriendlyFootballRepository {
                 MatchPlayer("miguel", TeamSide.B)
             ),
             goals = listOf(
-                GoalEntry("alex", TeamSide.A, 1),
-                GoalEntry("pablo", TeamSide.A, 2),
-                GoalEntry("sergio", TeamSide.A, 1),
-                GoalEntry("bruno", TeamSide.B, 1),
-                GoalEntry("dani", TeamSide.B, 2),
-                GoalEntry("miguel", TeamSide.B, 1)
+                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "carlos"),
+                GoalEntry("pablo", TeamSide.A, 2, goalkeeperId = "carlos"),
+                GoalEntry("sergio", TeamSide.A, 1, goalkeeperId = "carlos"),
+                GoalEntry("bruno", TeamSide.B, 1, goalkeeperId = "ivan"),
+                GoalEntry("dani", TeamSide.B, 2, goalkeeperId = "ivan"),
+                GoalEntry("miguel", TeamSide.B, 1, goalkeeperId = "ivan")
             )
         ),
         FriendlyMatch(
@@ -91,12 +139,12 @@ object InMemoryFriendlyFootballRepository : FriendlyFootballRepository {
                 MatchPlayer("sergio", TeamSide.B)
             ),
             goals = listOf(
-                GoalEntry("alex", TeamSide.A, 1),
-                GoalEntry("dani", TeamSide.A, 1),
-                GoalEntry("miguel", TeamSide.A, 1),
-                GoalEntry("bruno", TeamSide.B, 2),
-                GoalEntry("ivan", TeamSide.B, 2),
-                GoalEntry("sergio", TeamSide.B, 2)
+                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "pablo"),
+                GoalEntry("dani", TeamSide.A, 1, goalkeeperId = "pablo"),
+                GoalEntry("miguel", TeamSide.A, 1, goalkeeperId = "pablo"),
+                GoalEntry("bruno", TeamSide.B, 2, goalkeeperId = "carlos"),
+                GoalEntry("ivan", TeamSide.B, 2, goalkeeperId = "carlos"),
+                GoalEntry("sergio", TeamSide.B, 2, goalkeeperId = "carlos")
             )
         )
     )
