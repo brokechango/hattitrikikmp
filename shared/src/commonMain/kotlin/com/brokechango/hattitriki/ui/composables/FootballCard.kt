@@ -1,6 +1,5 @@
 package com.brokechango.hattitriki.ui.composables
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -19,14 +18,15 @@ fun FootballCard(
     val colors = MaterialTheme.colorScheme
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (highlight) colors.primaryContainer else colors.surface
         ),
-        border = BorderStroke(
-            width = 1.dp,
-            color = if (highlight) CrestGold.copy(alpha = 0.9f) else colors.outline.copy(alpha = 0.48f)
-        )
+        border = if (highlight) {
+            androidx.compose.foundation.BorderStroke(1.dp, CrestGold.copy(alpha = 0.78f))
+        } else {
+            null
+        }
     ) {
         content()
     }
