@@ -1,7 +1,13 @@
 package com.brokechango.hattitriki
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -27,13 +33,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.compose.ui.unit.sp
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.ui.NavDisplay
 import com.brokechango.hattitriki.core.design.CrestBlack
 import com.brokechango.hattitriki.core.design.CrestGold
+import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
+import com.brokechango.hattitriki.core.navigation.rememberHattitrikiNavigationState
 import com.brokechango.hattitriki.core.navigation.screensSavedStateConfiguration
 import com.brokechango.hattitriki.feature.admin.AdminScreen
 import com.brokechango.hattitriki.feature.admin.AdminViewModel
@@ -57,8 +67,8 @@ import org.jetbrains.compose.resources.painterResource
 @OptIn(ExperimentalMaterial3Api::class)
 fun App() {
     HattitrikiTheme {
-        val backStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Home)
-        val currentScreen = backStack.last() as Screens
+        val navigation = rememberHattitrikiNavigationState()
+        val currentScreen = navigation.currentScreen
 
         val homeViewModel = remember { HomeViewModel() }
         val historyViewModel = remember { HistoryViewModel() }
@@ -72,22 +82,14 @@ fun App() {
             topBar = {
                 MatchTopBar(
                     currentScreen = currentScreen,
-                    canNavigateBack = backStack.size > 1,
-                    onBack = {
-                        if (backStack.size > 1) {
-                            backStack.removeAt(backStack.lastIndex)
-                        }
-                    }
+                    canNavigateBack = navigation.backStack.size > 1,
+                    onBack = navigation::navigateBack
                 )
             },
             bottomBar = {
                 MainNavigationBar(
-                    currentScreen = currentScreen,
-                    onNavigate = { screen ->
-                        if (backStack.last() != screen) {
-                            backStack.add(screen)
-                        }
-                    }
+                    currentScreen = navigation.currentTopLevelScreen,
+                    onNavigate = navigation::selectTopLevel
                 )
             }
         ) { innerPadding ->
@@ -104,53 +106,93 @@ fun App() {
                     contentAlignment = Alignment.TopCenter
                 ) {
                     Box(modifier = Modifier.widthIn(max = 1040.dp)) {
-                        when (val screen = currentScreen) {
-                            Screens.Home -> HomeScreen(
-                                viewModel = homeViewModel,
-                                onEvent = { event ->
-                                    when (event) {
-                                        HomeEvent.OpenAdmin -> backStack.add(Screens.Admin)
-                                        HomeEvent.OpenHistory -> backStack.add(Screens.History)
-                                        HomeEvent.OpenPlayers -> backStack.add(Screens.Players)
-                                        is HomeEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
-                                    }
-                                }
-                            )
-
-                            Screens.History -> HistoryScreen(
-                                viewModel = historyViewModel,
-                                onEvent = { event ->
-                                    when (event) {
-                                        is HistoryEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
-                                    }
-                                }
-                            )
-
-                            Screens.Players -> PlayersScreen(
-                                viewModel = playersViewModel,
-                                onEvent = {}
-                            )
-
-                            Screens.Admin -> AdminScreen(viewModel = adminViewModel)
-
-                            is Screens.MatchDetail -> {
-                                val matchDetailViewModel = remember(screen.matchId) {
-                                    MatchDetailViewModel(matchId = screen.matchId)
-                                }
-                                MatchDetailScreen(
-                                    viewModel = matchDetailViewModel,
-                                    onEvent = { event ->
-                                        when (event) {
-                                            MatchDetailEvent.Back -> {
-                                                if (backStack.size > 1) {
-                                                    backStack.removeAt(backStack.lastIndex)
-                                                }
+                        NavDisplay(
+                            backStack = navigation.backStack,
+                            onBack = navigation::navigateBack,
+                            entryProvider = entryProvider {
+                                entry<Screens.Home> {
+                                    HomeScreen(
+                                        viewModel = homeViewModel,
+                                        onEvent = { event ->
+                                            when (event) {
+                                                HomeEvent.OpenAdmin -> navigation.navigate(Screens.Admin)
+                                                HomeEvent.OpenHistory -> navigation.navigate(Screens.History)
+                                                HomeEvent.OpenPlayers -> navigation.navigate(Screens.Players)
+                                                is HomeEvent.OpenMatch -> navigation.navigate(
+                                                    Screens.MatchDetail(event.matchId)
+                                                )
                                             }
                                         }
+                                    )
+                                }
+
+                                entry<Screens.History> {
+                                    HistoryScreen(
+                                        viewModel = historyViewModel,
+                                        onEvent = { event ->
+                                            when (event) {
+                                                is HistoryEvent.OpenMatch -> navigation.navigate(
+                                                    Screens.MatchDetail(event.matchId)
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+
+                                entry<Screens.Players> {
+                                    PlayersScreen(
+                                        viewModel = playersViewModel,
+                                        onEvent = {}
+                                    )
+                                }
+
+                                entry<Screens.Admin> {
+                                    AdminScreen(viewModel = adminViewModel)
+                                }
+
+                                entry<Screens.MatchDetail> { screen ->
+                                    val matchDetailViewModel = remember(screen.matchId) {
+                                        MatchDetailViewModel(matchId = screen.matchId)
                                     }
+                                    MatchDetailScreen(
+                                        viewModel = matchDetailViewModel,
+                                        onEvent = { event ->
+                                            when (event) {
+                                                MatchDetailEvent.Back -> navigation.navigateBack()
+                                            }
+                                        }
+                                    )
+                                }
+                            },
+                            transitionSpec = {
+                                slideInHorizontally(
+                                    initialOffsetX = { it },
+                                    animationSpec = tween(300)
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { -it },
+                                    animationSpec = tween(300)
+                                )
+                            },
+                            popTransitionSpec = {
+                                slideInHorizontally(
+                                    initialOffsetX = { -it },
+                                    animationSpec = tween(300)
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(300)
+                                )
+                            },
+                            predictivePopTransitionSpec = {
+                                slideInHorizontally(
+                                    initialOffsetX = { -it },
+                                    animationSpec = tween(300)
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { it },
+                                    animationSpec = tween(300)
                                 )
                             }
-                        }
+
+                        )
                     }
                 }
             }
@@ -168,8 +210,12 @@ private fun MatchTopBar(
     TopAppBar(
         title = {
             Text(
-                text = topBarTitle(currentScreen),
+                text = if (currentScreen == Screens.Home) "HATTITRIKI FC" else topBarTitle(
+                    currentScreen
+                ),
+                style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Black,
+                letterSpacing = 1.2.sp,
                 maxLines = 1
             )
         },
@@ -179,20 +225,27 @@ private fun MatchTopBar(
                     onClick = onBack,
                     colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
                 ) {
-                    Text("<")
+                    Text(
+                        "‹",
+                        style = androidx.compose.material3.MaterialTheme.typography.headlineMedium
+                    )
                 }
             } else {
-                Image(
-                    painter = painterResource(Res.drawable.hattitriki_app_icon),
-                    contentDescription = "Hattitriki FC",
-                    modifier = Modifier
-                        .padding(start = 12.dp)
-                        .size(36.dp)
-                )
+                Row(
+                    modifier = Modifier.padding(start = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Image(
+                        painter = painterResource(Res.drawable.hattitriki_app_icon),
+                        contentDescription = "Hattitriki FC",
+                        modifier = Modifier.size(34.dp)
+                    )
+                }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = CrestBlack,
+            containerColor = CrestNavy,
             titleContentColor = CrestWhite,
             navigationIconContentColor = CrestGold,
             actionIconContentColor = CrestWhite
@@ -214,7 +267,7 @@ private fun MainNavigationBar(
     onNavigate: (Screens) -> Unit
 ) {
     NavigationBar(
-        containerColor = CrestBlack,
+        containerColor = CrestNavy,
         contentColor = CrestWhite,
         tonalElevation = NavigationBarDefaults.Elevation
     ) {
@@ -222,28 +275,28 @@ private fun MainNavigationBar(
             selected = currentScreen == Screens.Home,
             onClick = { onNavigate(Screens.Home) },
             label = { Text("Inicio") },
-            icon = { Text("1") },
+            icon = { Text("⌂") },
             colors = navItemColors()
         )
         NavigationBarItem(
             selected = currentScreen == Screens.History,
             onClick = { onNavigate(Screens.History) },
-            label = { Text("Historial") },
-            icon = { Text("M") },
+            label = { Text("Partidos") },
+            icon = { Text("≋") },
             colors = navItemColors()
         )
         NavigationBarItem(
             selected = currentScreen == Screens.Players,
             onClick = { onNavigate(Screens.Players) },
-            label = { Text("Stats") },
-            icon = { Text("G") },
+            label = { Text("Plantilla") },
+            icon = { Text("◎") },
             colors = navItemColors()
         )
         NavigationBarItem(
             selected = currentScreen == Screens.Admin,
             onClick = { onNavigate(Screens.Admin) },
-            label = { Text("Admin") },
-            icon = { Text("C") },
+            label = { Text("Míster") },
+            icon = { Text("⚙") },
             colors = navItemColors()
         )
     }
