@@ -38,6 +38,10 @@ kotlin {
     sourceSets {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.ktor.client.okhttp)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         commonMain.dependencies {
             implementation(libs.compose.runtime)
@@ -51,6 +55,9 @@ kotlin {
             implementation(libs.jetbrains.navigation3.ui)
             implementation(libs.kotlinx.serialization.core)
             implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.ktor.client.core)
+            implementation(libs.supabase.auth)
+            implementation(libs.supabase.postgrest)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
