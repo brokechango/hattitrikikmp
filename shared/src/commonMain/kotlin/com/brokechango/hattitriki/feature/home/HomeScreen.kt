@@ -49,8 +49,8 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ScreenTitle(
-            title = "Hattitriki FC",
-            subtitle = "Partidos de domingo para gente especial."
+            title = "Liga Genuine",
+            subtitle = "Resultados, rachas y campeones de la liga Genuine."
         )
 
         uiState.latestMatch?.let { match ->
@@ -61,33 +61,60 @@ fun HomeScreen(
                 highlight = true
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text("Ultimo partido", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(match.dateLabel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Equipo A", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "ÚLTIMO RESULTADO",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = CrestGold,
+                            fontWeight = FontWeight.Black
+                        )
+                        Text(
+                            match.dateLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Equipo A", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         ScorePill("${match.teamAScore} - ${match.teamBScore}")
-                        Text("Equipo B", style = MaterialTheme.typography.titleMedium)
+                        Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                 }
             }
         }
 
-        Text(
-            text = "Estadisticas de la liga",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "${uiState.totalMatches} partidos",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(
+            modifier = Modifier.padding(top = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                text = "TEMPORADA",
+                style = MaterialTheme.typography.labelMedium,
+                color = CrestGold,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "Estadísticas de la liga",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "${uiState.totalMatches} partidos · ${uiState.totalGoals} goles",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         FeaturedStatsGrid(stats = uiState.featuredStats)
     }
 }
