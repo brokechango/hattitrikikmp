@@ -44,9 +44,7 @@ class AdminAuthRepository internal constructor(
             AdminLoginResult.NotAdministrator
         }
     } catch (exception: Exception) {
-        AdminLoginResult.Failure(
-            exception.message ?: "No se ha podido iniciar sesión. Inténtalo de nuevo."
-        )
+        AdminLoginResult.Failure(loginErrorMessage(exception))
     }
 
     suspend fun logout() {
@@ -71,5 +69,18 @@ class AdminAuthRepository internal constructor(
 
     companion object {
         private const val ADMIN_ROLE = "admin"
+
+        private fun loginErrorMessage(exception: Exception): String {
+            val isInvalidCredentials = exception.message.orEmpty().contains(
+                "invalid_credentials",
+                ignoreCase = true
+            )
+
+            return if (isInvalidCredentials) {
+                "Usuario o contraseña inválidos."
+            } else {
+                "No se ha podido iniciar sesión. Comprueba tu conexión e inténtalo de nuevo."
+            }
+        }
     }
 }
