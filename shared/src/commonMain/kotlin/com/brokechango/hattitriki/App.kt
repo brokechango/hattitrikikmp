@@ -1,9 +1,11 @@
 package com.brokechango.hattitriki
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
@@ -13,7 +15,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -24,10 +25,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.rememberNavBackStack
-import com.brokechango.hattitriki.core.design.ChalkWhite
-import com.brokechango.hattitriki.core.design.DeepPitch
+import com.brokechango.hattitriki.core.design.CrestBlack
+import com.brokechango.hattitriki.core.design.CrestGold
+import com.brokechango.hattitriki.core.design.CrestWhite
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
-import com.brokechango.hattitriki.core.design.LimeLine
 import com.brokechango.hattitriki.core.design.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
 import com.brokechango.hattitriki.core.navigation.screensSavedStateConfiguration
@@ -44,6 +45,9 @@ import com.brokechango.hattitriki.feature.matchdetail.MatchDetailScreen
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.hattitriki_app_icon
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 @Preview
@@ -163,44 +167,31 @@ private fun MatchTopBar(
             if (canNavigateBack) {
                 androidx.compose.material3.TextButton(
                     onClick = onBack,
-                    colors = ButtonDefaults.textButtonColors(contentColor = LimeLine)
+                    colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
                 ) {
                     Text("<")
                 }
             } else {
-                Surface(
-                    modifier = Modifier.padding(start = 12.dp),
-                    color = LimeLine,
-                    contentColor = DeepPitch,
-                    shape = androidx.compose.foundation.shape.CircleShape
-                ) {
-                    Text(
-                        text = "HT",
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-                        fontWeight = FontWeight.Black
-                    )
-                }
+                Image(
+                    painter = painterResource(Res.drawable.hattitriki_app_icon),
+                    contentDescription = "Hattitriki FC",
+                    modifier = Modifier
+                        .padding(start = 12.dp)
+                        .size(36.dp)
+                )
             }
         },
-        actions = {
-            Text(
-                text = "Domingo FC",
-                modifier = Modifier.padding(end = 16.dp),
-                color = ChalkWhite.copy(alpha = 0.8f),
-                style = androidx.compose.material3.MaterialTheme.typography.labelLarge
-            )
-        },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = DeepPitch,
-            titleContentColor = ChalkWhite,
-            navigationIconContentColor = LimeLine,
-            actionIconContentColor = ChalkWhite
+            containerColor = CrestBlack,
+            titleContentColor = CrestWhite,
+            navigationIconContentColor = CrestGold,
+            actionIconContentColor = CrestWhite
         )
     )
 }
 
 private fun topBarTitle(screen: Screens): String = when (screen) {
-    Screens.Home -> "Hattitriki"
+    Screens.Home -> "Hattitriki FC"
     Screens.History -> "Marcador historico"
     Screens.Players -> "Plantilla"
     Screens.Admin -> "Zona mister"
@@ -213,8 +204,8 @@ private fun MainNavigationBar(
     onNavigate: (Screens) -> Unit
 ) {
     NavigationBar(
-        containerColor = DeepPitch,
-        contentColor = ChalkWhite,
+        containerColor = CrestBlack,
+        contentColor = CrestWhite,
         tonalElevation = NavigationBarDefaults.Elevation
     ) {
         NavigationBarItem(
@@ -250,9 +241,9 @@ private fun MainNavigationBar(
 
 @Composable
 private fun navItemColors() = NavigationBarItemDefaults.colors(
-    selectedIconColor = DeepPitch,
-    selectedTextColor = LimeLine,
-    indicatorColor = LimeLine,
-    unselectedIconColor = ChalkWhite.copy(alpha = 0.72f),
-    unselectedTextColor = ChalkWhite.copy(alpha = 0.72f)
+    selectedIconColor = CrestBlack,
+    selectedTextColor = CrestGold,
+    indicatorColor = CrestGold,
+    unselectedIconColor = CrestWhite.copy(alpha = 0.72f),
+    unselectedTextColor = CrestWhite.copy(alpha = 0.72f)
 )

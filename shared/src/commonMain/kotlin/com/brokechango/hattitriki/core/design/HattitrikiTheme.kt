@@ -27,32 +27,33 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-val PitchGreen = Color(0xFF0B5D35)
-val DeepPitch = Color(0xFF063C28)
-val LimeLine = Color(0xFFD4F35B)
-val ClubGold = Color(0xFFFFC857)
-val KitRed = Color(0xFFE64B3C)
-val ChalkWhite = Color(0xFFF6F7EC)
-val NightGrass = Color(0xFF061D16)
+val CrestBlack = Color(0xFF030405)
+val CrestNavy = Color(0xFF001D43)
+val CrestNavyLight = Color(0xFF073067)
+val CrestGold = Color(0xFFE8B927)
+val CrestGoldLight = Color(0xFFFFD95B)
+val CrestRed = Color(0xFFC8102E)
+val CrestMaroon = Color(0xFF8F1538)
+val CrestWhite = Color(0xFFF8F8F2)
 
 private val FootballColorScheme = darkColorScheme(
-    primary = LimeLine,
-    onPrimary = NightGrass,
-    primaryContainer = PitchGreen,
-    onPrimaryContainer = ChalkWhite,
-    secondary = ClubGold,
-    onSecondary = NightGrass,
-    secondaryContainer = Color(0xFF5B4300),
-    onSecondaryContainer = ChalkWhite,
-    tertiary = KitRed,
-    onTertiary = ChalkWhite,
-    background = NightGrass,
-    onBackground = ChalkWhite,
-    surface = Color(0xFF0B2A20),
-    onSurface = ChalkWhite,
-    surfaceVariant = Color(0xFF123D2D),
-    onSurfaceVariant = Color(0xFFD9E7D1),
-    outline = Color(0xFF7FA889)
+    primary = CrestGold,
+    onPrimary = CrestBlack,
+    primaryContainer = CrestNavy,
+    onPrimaryContainer = CrestWhite,
+    secondary = CrestRed,
+    onSecondary = CrestWhite,
+    secondaryContainer = CrestMaroon,
+    onSecondaryContainer = CrestWhite,
+    tertiary = CrestGoldLight,
+    onTertiary = CrestBlack,
+    background = CrestBlack,
+    onBackground = CrestWhite,
+    surface = Color(0xFF07162B),
+    onSurface = CrestWhite,
+    surfaceVariant = CrestNavyLight,
+    onSurfaceVariant = Color(0xFFD9E2F2),
+    outline = Color(0xFFD6A92D)
 )
 
 @Composable
@@ -71,7 +72,7 @@ fun PitchBackground(
     Box(
         modifier = modifier.background(
             Brush.verticalGradient(
-                colors = listOf(NightGrass, DeepPitch, PitchGreen)
+                colors = listOf(CrestBlack, Color(0xFF061124), CrestNavy)
             )
         )
     ) {
@@ -79,7 +80,7 @@ fun PitchBackground(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(ChalkWhite.copy(alpha = 0.45f))
+                .background(CrestGold.copy(alpha = 0.72f))
         )
         content()
     }
@@ -100,7 +101,7 @@ fun FootballCard(
         ),
         border = BorderStroke(
             width = 1.dp,
-            color = if (highlight) LimeLine.copy(alpha = 0.8f) else colors.outline.copy(alpha = 0.45f)
+            color = if (highlight) CrestGold.copy(alpha = 0.9f) else colors.outline.copy(alpha = 0.48f)
         )
     ) {
         content()
@@ -170,4 +171,4 @@ fun StatRow(
 }
 
 val ColorScheme.scoreWin: Color
-    get() = LimeLine
+    get() = CrestGold
