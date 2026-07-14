@@ -3,9 +3,11 @@ package com.brokechango.hattitriki
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
@@ -20,6 +22,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,7 +32,7 @@ import com.brokechango.hattitriki.core.design.CrestBlack
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestWhite
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
-import com.brokechango.hattitriki.core.design.PitchBackground
+import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
 import com.brokechango.hattitriki.core.navigation.screensSavedStateConfiguration
 import com.brokechango.hattitriki.feature.admin.AdminScreen
@@ -94,52 +97,59 @@ fun App() {
                     .padding(innerPadding)
                     .verticalScroll(rememberScrollState())
             ) {
-                Box(modifier = Modifier.padding(16.dp)) {
-                    when (val screen = currentScreen) {
-                        Screens.Home -> HomeScreen(
-                            viewModel = homeViewModel,
-                            onEvent = { event ->
-                                when (event) {
-                                    HomeEvent.OpenAdmin -> backStack.add(Screens.Admin)
-                                    HomeEvent.OpenHistory -> backStack.add(Screens.History)
-                                    HomeEvent.OpenPlayers -> backStack.add(Screens.Players)
-                                    is HomeEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
-                                }
-                            }
-                        )
-
-                        Screens.History -> HistoryScreen(
-                            viewModel = historyViewModel,
-                            onEvent = { event ->
-                                when (event) {
-                                    is HistoryEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
-                                }
-                            }
-                        )
-
-                        Screens.Players -> PlayersScreen(
-                            viewModel = playersViewModel,
-                            onEvent = {}
-                        )
-
-                        Screens.Admin -> AdminScreen(viewModel = adminViewModel)
-
-                        is Screens.MatchDetail -> {
-                            val matchDetailViewModel = remember(screen.matchId) {
-                                MatchDetailViewModel(matchId = screen.matchId)
-                            }
-                            MatchDetailScreen(
-                                viewModel = matchDetailViewModel,
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.TopCenter
+                ) {
+                    Box(modifier = Modifier.widthIn(max = 1040.dp)) {
+                        when (val screen = currentScreen) {
+                            Screens.Home -> HomeScreen(
+                                viewModel = homeViewModel,
                                 onEvent = { event ->
                                     when (event) {
-                                        MatchDetailEvent.Back -> {
-                                            if (backStack.size > 1) {
-                                                backStack.removeAt(backStack.lastIndex)
-                                            }
-                                        }
+                                        HomeEvent.OpenAdmin -> backStack.add(Screens.Admin)
+                                        HomeEvent.OpenHistory -> backStack.add(Screens.History)
+                                        HomeEvent.OpenPlayers -> backStack.add(Screens.Players)
+                                        is HomeEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
                                     }
                                 }
                             )
+
+                            Screens.History -> HistoryScreen(
+                                viewModel = historyViewModel,
+                                onEvent = { event ->
+                                    when (event) {
+                                        is HistoryEvent.OpenMatch -> backStack.add(Screens.MatchDetail(event.matchId))
+                                    }
+                                }
+                            )
+
+                            Screens.Players -> PlayersScreen(
+                                viewModel = playersViewModel,
+                                onEvent = {}
+                            )
+
+                            Screens.Admin -> AdminScreen(viewModel = adminViewModel)
+
+                            is Screens.MatchDetail -> {
+                                val matchDetailViewModel = remember(screen.matchId) {
+                                    MatchDetailViewModel(matchId = screen.matchId)
+                                }
+                                MatchDetailScreen(
+                                    viewModel = matchDetailViewModel,
+                                    onEvent = { event ->
+                                        when (event) {
+                                            MatchDetailEvent.Back -> {
+                                                if (backStack.size > 1) {
+                                                    backStack.removeAt(backStack.lastIndex)
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }

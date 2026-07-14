@@ -14,9 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.brokechango.hattitriki.core.design.FootballCard
-import com.brokechango.hattitriki.core.design.ScorePill
-import com.brokechango.hattitriki.core.design.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.ScorePill
+import com.brokechango.hattitriki.ui.composables.ScreenTitle
 
 @Composable
 fun HistoryScreen(

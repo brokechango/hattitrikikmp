@@ -3,9 +3,13 @@ package com.brokechango.hattitriki.feature.home
 import androidx.lifecycle.ViewModel
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
 import com.brokechango.hattitriki.core.data.InMemoryFriendlyFootballRepository
+import com.brokechango.hattitriki.core.model.FriendlyMatch
+import com.brokechango.hattitriki.core.model.PlayerStats
+import com.brokechango.hattitriki.core.model.TeamSide
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlin.math.round
 
 class HomeViewModel(
     private val repository: FriendlyFootballRepository = InMemoryFriendlyFootballRepository
@@ -16,10 +20,109 @@ class HomeViewModel(
     private val _uiState = MutableStateFlow(
         HomeUiState(
             latestMatch = matches.firstOrNull(),
-            topScorers = stats.take(3),
             totalMatches = matches.size,
-            totalGoals = matches.sumOf { it.teamAScore + it.teamBScore }
+            totalGoals = matches.sumOf { it.teamAScore + it.teamBScore },
+            featuredStats = buildFeaturedStats(matches, stats)
         )
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private fun buildFeaturedStats(
+        matches: List<FriendlyMatch>,
+        stats: List<PlayerStats>
+    ): List<HomeFeaturedStat> {
+        val topScorer = stats.maxWithOrNull(compareBy<PlayerStats> { it.goals }.thenBy { it.wins })
+        val topGoalsPerMatch = stats
+            .filter { it.matchesPlayed > 0 }
+            .maxByOrNull { it.goals.toDouble() / it.matchesPlayed }
+        val mostPlayed = stats.maxWithOrNull(compareBy<PlayerStats> { it.matchesPlayed }.thenBy { it.wins })
+        val mostWins = stats.maxWithOrNull(compareBy<PlayerStats> { it.wins }.thenBy { it.goals })
+        val goalkeeperStats = stats
+            .filter { it.goalkeeperMatches > 0 }
+            .map { playerStats ->
+                val goalsAgainst = matches.sumOf { match ->
+                    val goalkeeper = match.players.firstOrNull {
+                        it.playerId == playerStats.player.id && it.wasGoalkeeper
+                    }
+                    when (goalkeeper?.team) {
+                        TeamSide.A -> match.teamBScore
+                        TeamSide.B -> match.teamAScore
+                        null -> 0
+                    }
+                }
+                playerStats to goalsAgainst
+            }
+        val bestGoalkeeper = goalkeeperStats
+            .minWithOrNull(
+                compareBy<Pair<PlayerStats, Int>> { it.second }
+                    .thenByDescending { it.first.goalkeeperMatches }
+                    .thenByDescending { it.first.wins }
+            )
+        val bestGoalkeeperPerMatch = goalkeeperStats
+            .minByOrNull { (playerStats, goalsAgainst) ->
+                goalsAgainst.toDouble() / playerStats.goalkeeperMatches
+            }
+
+        return listOfNotNull(
+            topScorer?.let {
+                HomeFeaturedStat(
+                    title = "Maximo goleador",
+                    icon = "⚽",
+                    playerName = it.player.name,
+                    value = it.goals.toString(),
+                    detail = "goles"
+                )
+            },
+            topGoalsPerMatch?.let {
+                HomeFeaturedStat(
+                    title = "Goles / partido",
+                    icon = "🎯",
+                    playerName = it.player.name,
+                    value = formatPerMatch(it.goals, it.matchesPlayed),
+                    detail = "goles por partido"
+                )
+            },
+            bestGoalkeeper?.let { (playerStats, goalsAgainst) ->
+                HomeFeaturedStat(
+                    title = "Zamora",
+                    icon = "🧤",
+                    playerName = playerStats.player.name,
+                    value = goalsAgainst.toString(),
+                    detail = "goles recibidos"
+                )
+            },
+            bestGoalkeeperPerMatch?.let { (playerStats, goalsAgainst) ->
+                HomeFeaturedStat(
+                    title = "GC / partido",
+                    icon = "🥅",
+                    playerName = playerStats.player.name,
+                    value = formatPerMatch(goalsAgainst, playerStats.goalkeeperMatches),
+                    detail = "como portero"
+                )
+            },
+            mostPlayed?.let {
+                HomeFeaturedStat(
+                    title = "Mas jugado",
+                    icon = "👟",
+                    playerName = it.player.name,
+                    value = it.matchesPlayed.toString(),
+                    detail = "partidos"
+                )
+            },
+            mostWins?.let {
+                HomeFeaturedStat(
+                    title = "Mas ganador",
+                    icon = "🏆",
+                    playerName = it.player.name,
+                    value = it.wins.toString(),
+                    detail = "victorias"
+                )
+            }
+        )
+    }
+
+    private fun formatPerMatch(total: Int, matches: Int): String {
+        if (matches == 0) return "0.0"
+        return (round(total.toDouble() / matches * 10) / 10).toString()
+    }
 }
