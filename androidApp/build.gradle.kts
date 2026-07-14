@@ -1,9 +1,19 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.googleServices)
+}
+
+val signingProperties = Properties().apply {
+    val propertiesFile = rootProject.file("keystore.properties")
+    check(propertiesFile.isFile) {
+        "Missing keystore.properties. Restore the local Android release-signing configuration."
+    }
+    propertiesFile.inputStream().use(::load)
 }
 
 kotlin {
@@ -15,6 +25,11 @@ dependencies {
     implementation(projects.shared)
 
     implementation(libs.androidx.activity.compose)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.auth)
+    implementation(libs.firebase.firestore)
 
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
@@ -36,9 +51,18 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file(signingProperties.getProperty("storeFile"))
+            storePassword = signingProperties.getProperty("storePassword")
+            keyAlias = signingProperties.getProperty("keyAlias")
+            keyPassword = signingProperties.getProperty("keyPassword")
+        }
+    }
     buildTypes {
         getByName("release") {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
         }
     }
     compileOptions {

@@ -5,6 +5,8 @@
 xcuserdata
 !src/**/build/
 local.properties
+keystore.properties
+*.keystore
 .idea
 .DS_Store
 captures
@@ -17,3 +19,5 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+androidApp/google-services.json
+iosApp/iosApp/GoogleService-Info.plist
