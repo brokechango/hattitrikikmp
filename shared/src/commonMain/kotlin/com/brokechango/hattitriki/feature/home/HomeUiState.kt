@@ -1,6 +1,7 @@
 package com.brokechango.hattitriki.feature.home
 
 import com.brokechango.hattitriki.core.model.FriendlyMatch
+import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 
 data class HomeUiState(
     val latestMatch: FriendlyMatch?,
@@ -10,9 +11,7 @@ data class HomeUiState(
 )
 
 data class HomeFeaturedStat(
-    val title: String,
-    val icon: String,
+    val category: PlayerRankingCategory,
     val playerName: String,
     val value: String,
-    val detail: String
 )

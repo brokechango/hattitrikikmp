@@ -5,6 +5,7 @@ import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
 import com.brokechango.hattitriki.core.data.InMemoryFriendlyFootballRepository
 import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.PlayerStats
+import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.core.model.TeamSide
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -66,56 +67,44 @@ class HomeViewModel(
         return listOfNotNull(
             topScorer?.let {
                 HomeFeaturedStat(
-                    title = "Maximo goleador",
-                    icon = "⚽",
+                    category = PlayerRankingCategory.TOP_SCORER,
                     playerName = it.player.name,
-                    value = it.goals.toString(),
-                    detail = "goles"
+                    value = it.goals.toString()
                 )
             },
             topGoalsPerMatch?.let {
                 HomeFeaturedStat(
-                    title = "Goles / partido",
-                    icon = "🎯",
+                    category = PlayerRankingCategory.GOALS_PER_MATCH,
                     playerName = it.player.name,
-                    value = formatPerMatch(it.goals, it.matchesPlayed),
-                    detail = "goles por partido"
+                    value = formatPerMatch(it.goals, it.matchesPlayed)
                 )
             },
             bestGoalkeeper?.let { (playerStats, goalsAgainst) ->
                 HomeFeaturedStat(
-                    title = "Zamora",
-                    icon = "🧤",
+                    category = PlayerRankingCategory.ZAMORA,
                     playerName = playerStats.player.name,
-                    value = goalsAgainst.toString(),
-                    detail = "goles recibidos"
+                    value = goalsAgainst.toString()
                 )
             },
             bestGoalkeeperPerMatch?.let { (playerStats, goalsAgainst) ->
                 HomeFeaturedStat(
-                    title = "GC / partido",
-                    icon = "🥅",
+                    category = PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH,
                     playerName = playerStats.player.name,
-                    value = formatPerMatch(goalsAgainst, playerStats.goalkeeperMatches),
-                    detail = "como portero"
+                    value = formatPerMatch(goalsAgainst, playerStats.goalkeeperMatches)
                 )
             },
             mostPlayed?.let {
                 HomeFeaturedStat(
-                    title = "Mas jugado",
-                    icon = "👟",
+                    category = PlayerRankingCategory.MOST_PLAYED,
                     playerName = it.player.name,
-                    value = it.matchesPlayed.toString(),
-                    detail = "partidos"
+                    value = it.matchesPlayed.toString()
                 )
             },
             mostWins?.let {
                 HomeFeaturedStat(
-                    title = "Mas ganador",
-                    icon = "🏆",
+                    category = PlayerRankingCategory.MOST_WINS,
                     playerName = it.player.name,
-                    value = it.wins.toString(),
-                    detail = "victorias"
+                    value = it.wins.toString()
                 )
             }
         )

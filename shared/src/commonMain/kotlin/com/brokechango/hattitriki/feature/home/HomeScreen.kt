@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestGoldLight
+import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
@@ -115,13 +116,17 @@ fun HomeScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        FeaturedStatsGrid(stats = uiState.featuredStats)
+        FeaturedStatsGrid(
+            stats = uiState.featuredStats,
+            onOpenRanking = { category -> onEvent(HomeEvent.OpenPlayers(category)) }
+        )
     }
 }
 
 @Composable
 private fun FeaturedStatsGrid(
     stats: List<HomeFeaturedStat>,
+    onOpenRanking: (PlayerRankingCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -140,6 +145,7 @@ private fun FeaturedStatsGrid(
                     rowStats.forEach { stat ->
                         FeaturedStatCard(
                             stat = stat,
+                            onClick = { onOpenRanking(stat.category) },
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -155,11 +161,14 @@ private fun FeaturedStatsGrid(
 @Composable
 private fun FeaturedStatCard(
     stat: HomeFeaturedStat,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     FootballCard(
-        modifier = modifier.aspectRatio(1f),
-        highlight = stat.title == "Maximo goleador"
+        modifier = modifier
+            .aspectRatio(1f)
+            .clickable(onClick = onClick),
+        highlight = stat.category == PlayerRankingCategory.TOP_SCORER
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -181,7 +190,7 @@ private fun FeaturedStatCard(
                     verticalAlignment = Alignment.Top
                 ) {
                     Text(
-                        text = stat.title,
+                        text = stat.category.title,
                         modifier = Modifier.weight(1f),
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -189,7 +198,7 @@ private fun FeaturedStatCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
-                    StatIcon(icon = stat.icon)
+                    StatIcon(icon = stat.category.icon)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
@@ -215,7 +224,7 @@ private fun FeaturedStatCard(
                             fontWeight = FontWeight.Black
                         )
                         Text(
-                            text = stat.detail,
+                            text = stat.category.detail,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.labelSmall,

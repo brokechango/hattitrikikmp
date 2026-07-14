@@ -15,8 +15,8 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun ScreenTitle(
     title: String,
-    subtitle: String,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    subtitle: String? = null
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -28,12 +28,14 @@ fun ScreenTitle(
             letterSpacing = (-0.8).sp,
             fontWeight = FontWeight.Black
         )
-        Text(
-            text = subtitle,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        subtitle?.let {
+            Text(
+                text = subtitle,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

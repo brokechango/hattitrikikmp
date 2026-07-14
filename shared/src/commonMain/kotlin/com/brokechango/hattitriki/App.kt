@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +58,7 @@ import com.brokechango.hattitriki.feature.matchdetail.MatchDetailEvent
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailScreen
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
+import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.hattitriki_app_icon
@@ -69,11 +71,16 @@ fun App() {
     HattitrikiTheme {
         val navigation = rememberHattitrikiNavigationState()
         val currentScreen = navigation.currentScreen
+        val scrollState = rememberScrollState()
 
         val homeViewModel = remember { HomeViewModel() }
         val historyViewModel = remember { HistoryViewModel() }
         val playersViewModel = remember { PlayersViewModel() }
         val adminViewModel = remember { AdminViewModel() }
+
+        LaunchedEffect(currentScreen) {
+            scrollState.scrollTo(0)
+        }
 
         Scaffold(
             modifier = Modifier
@@ -97,7 +104,7 @@ fun App() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
             ) {
                 Box(
                     modifier = Modifier
@@ -117,7 +124,10 @@ fun App() {
                                             when (event) {
                                                 HomeEvent.OpenAdmin -> navigation.navigate(Screens.Admin)
                                                 HomeEvent.OpenHistory -> navigation.navigate(Screens.History)
-                                                HomeEvent.OpenPlayers -> navigation.navigate(Screens.Players)
+                                                is HomeEvent.OpenPlayers -> {
+                                                    playersViewModel.selectCategory(event.category)
+                                                    navigation.navigate(Screens.Players)
+                                                }
                                                 is HomeEvent.OpenMatch -> navigation.navigate(
                                                     Screens.MatchDetail(event.matchId)
                                                 )
@@ -142,7 +152,17 @@ fun App() {
                                 entry<Screens.Players> {
                                     PlayersScreen(
                                         viewModel = playersViewModel,
-                                        onEvent = {}
+                                        onEvent = { event ->
+                                            when (event) {
+                                                is PlayersEvent.SelectCategory -> {
+                                                    playersViewModel.selectCategory(event.category)
+                                                }
+                                                is PlayersEvent.SelectRankingView -> {
+                                                    playersViewModel.selectRankingView(event.view)
+                                                }
+                                                is PlayersEvent.SelectPlayer -> Unit
+                                            }
+                                        }
                                     )
                                 }
 
@@ -256,7 +276,7 @@ private fun MatchTopBar(
 private fun topBarTitle(screen: Screens): String = when (screen) {
     Screens.Home -> "Hattitriki FC"
     Screens.History -> "Marcador historico"
-    Screens.Players -> "Plantilla"
+    Screens.Players -> "Clasificaciones"
     Screens.Admin -> "Zona mister"
     is Screens.MatchDetail -> "Acta del partido"
 }
@@ -288,7 +308,7 @@ private fun MainNavigationBar(
         NavigationBarItem(
             selected = currentScreen == Screens.Players,
             onClick = { onNavigate(Screens.Players) },
-            label = { Text("Plantilla") },
+            label = { Text("Clasificaciones") },
             icon = { Text("◎") },
             colors = navItemColors()
         )
