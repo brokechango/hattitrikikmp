@@ -31,8 +31,14 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ScreenTitle(
-            title = "Historial",
-            subtitle = "Todos los marcadores guardados de la liga del grupo."
+            title = "Resultados",
+            subtitle = "Todos los partidos guardados de la liga del grupo."
+        )
+        Text(
+            text = "PARTIDOS FINALIZADOS",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Black
         )
         uiState.matches.forEach { match ->
             FootballCard(
@@ -41,17 +47,39 @@ fun HistoryScreen(
                     .clickable { onEvent(HistoryEvent.OpenMatch(match.id)) }
             ) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text(match.dateLabel, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text("Equipo A", modifier = Modifier.weight(1f))
+                        Text(
+                            match.dateLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            "FINAL",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
+                        Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
                         ScorePill("${match.teamAScore} - ${match.teamBScore}")
-                        Text("Equipo B", modifier = Modifier.weight(1f))
+                        Text(
+                            "Equipo B",
+                            modifier = Modifier.weight(1f),
+                            fontWeight = FontWeight.Bold,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
                     }
                 }
             }
