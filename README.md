@@ -57,6 +57,14 @@ Antes de compilar Android, añade estos archivos locales; no se versionan para p
    ```
 
 3. Comprueba que `local.properties` indique la ruta de tu Android SDK. Android Studio lo crea normalmente de forma automática.
+4. Para habilitar el login de administrador en Android, añade también estas dos líneas a `local.properties`:
+
+   ```properties
+   SUPABASE_URL=https://tu-proyecto.supabase.co
+   SUPABASE_PUBLISHABLE_KEY=tu_publishable_key
+   ```
+
+   En iOS, crea el archivo local no versionado `iosApp/Configuration/Supabase.xcconfig` con el mismo contenido. Usa la publishable key (o la anon key heredada), nunca `service_role` ni una clave secreta.
 
 No incluyas estos archivos ni sus valores en commits o incidencias públicas.
 

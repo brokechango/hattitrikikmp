@@ -1,5 +1,7 @@
 TEAM_ID=
 
+#include? "Supabase.xcconfig"
+
 PRODUCT_NAME=Hattitriki
 PRODUCT_BUNDLE_IDENTIFIER=com.brokechango.hattitriki.Hattitriki$(TEAM_ID)
 

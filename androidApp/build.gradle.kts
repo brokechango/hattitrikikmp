@@ -16,6 +16,17 @@ val signingProperties = Properties().apply {
     propertiesFile.inputStream().use(::load)
 }
 
+val localProperties = Properties().apply {
+    val propertiesFile = rootProject.file("local.properties")
+    if (propertiesFile.isFile) {
+        propertiesFile.inputStream().use(::load)
+    }
+}
+
+fun localProperty(name: String): String = localProperties.getProperty(name).orEmpty()
+
+fun String.asBuildConfigString(): String = "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_11
@@ -45,6 +56,12 @@ android {
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "SUPABASE_URL", localProperty("SUPABASE_URL").asBuildConfigString())
+        buildConfigField(
+            "String",
+            "SUPABASE_PUBLISHABLE_KEY",
+            localProperty("SUPABASE_PUBLISHABLE_KEY").asBuildConfigString()
+        )
     }
     packaging {
         resources {
@@ -68,5 +85,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    buildFeatures {
+        buildConfig = true
     }
 }

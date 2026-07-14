@@ -21,3 +21,4 @@ captures
 node_modules/
 androidApp/google-services.json
 iosApp/iosApp/GoogleService-Info.plist
+iosApp/Configuration/Supabase.xcconfig

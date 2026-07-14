@@ -6,14 +6,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.brokechango.hattitriki.core.auth.AdminAuthRepository
+import com.brokechango.hattitriki.core.auth.SupabaseCredentials
+import com.brokechango.hattitriki.core.auth.createAdminAuthRepository
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        val adminAuthRepository = createAdminAuthRepository()
 
         setContent {
-            App()
+            App(adminAuthRepository = adminAuthRepository)
         }
     }
 }
@@ -23,3 +27,11 @@ class MainActivity : ComponentActivity() {
 fun AppAndroidPreview() {
     App()
 }
+
+private fun createAdminAuthRepository(): AdminAuthRepository? = runCatching {
+    val credentials = SupabaseCredentials(
+        url = BuildConfig.SUPABASE_URL,
+        publishableKey = BuildConfig.SUPABASE_PUBLISHABLE_KEY
+    )
+    createAdminAuthRepository(credentials)
+}.getOrNull()

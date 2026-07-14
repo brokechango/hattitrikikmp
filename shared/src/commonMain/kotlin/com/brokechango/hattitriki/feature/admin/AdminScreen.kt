@@ -7,11 +7,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
@@ -30,7 +32,7 @@ fun AdminScreen(
     ) {
         ScreenTitle(
             title = "Zona mister",
-            subtitle = "Gestiona partidos y altas cuando el acceso este conectado."
+            subtitle = "Gestiona partidos y altas con una cuenta administradora."
         )
 
         FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
@@ -39,18 +41,57 @@ fun AdminScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text("Acceso de escritura", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(
-                    text = if (uiState.isAdmin) {
-                        "Sesion admin activa."
-                    } else {
-                        "Pendiente de conectar Firebase Auth. Solo tu usuario podra editar."
+                if (uiState.isAdmin) {
+                    Text("Sesión admin activa.")
+                    OutlinedButton(
+                        onClick = { viewModel.onEvent(AdminEvent.LogoutClicked) },
+                        enabled = !uiState.isLoading
+                    ) {
+                        Text("Cerrar sesión")
                     }
-                )
-                Button(
-                    onClick = { viewModel.onEvent(AdminEvent.LoginClicked) },
-                    enabled = uiState.pendingFirebaseSetup
-                ) {
-                    Text("Conectar login")
+                } else {
+                    Text("Inicia sesión con tu cuenta administradora.")
+
+                    if (!uiState.isAuthConfigured) {
+                        Text(
+                            text = "Falta la configuración local de Supabase en este dispositivo.",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    OutlinedTextField(
+                        value = uiState.email,
+                        onValueChange = { viewModel.onEvent(AdminEvent.EmailChanged(it)) },
+                        label = { Text("Correo electrónico") },
+                        singleLine = true,
+                        enabled = !uiState.isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    OutlinedTextField(
+                        value = uiState.password,
+                        onValueChange = { viewModel.onEvent(AdminEvent.PasswordChanged(it)) },
+                        label = { Text("Contraseña") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        enabled = !uiState.isLoading,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    uiState.errorMessage?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    Button(
+                        onClick = { viewModel.onEvent(AdminEvent.SubmitLogin) },
+                        enabled = uiState.canSubmitLogin,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(if (uiState.isLoading) "Entrando…" else "Entrar")
+                    }
                 }
             }
         }

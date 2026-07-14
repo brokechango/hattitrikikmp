@@ -41,6 +41,7 @@ import com.brokechango.hattitriki.core.design.CrestBlack
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
+import com.brokechango.hattitriki.core.auth.AdminAuthRepository
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
@@ -67,7 +68,7 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 @Preview
 @OptIn(ExperimentalMaterial3Api::class)
-fun App() {
+fun App(adminAuthRepository: AdminAuthRepository? = null) {
     HattitrikiTheme {
         val navigation = rememberHattitrikiNavigationState()
         val currentScreen = navigation.currentScreen
@@ -76,7 +77,7 @@ fun App() {
         val homeViewModel = remember { HomeViewModel() }
         val historyViewModel = remember { HistoryViewModel() }
         val playersViewModel = remember { PlayersViewModel() }
-        val adminViewModel = remember { AdminViewModel() }
+        val adminViewModel = remember(adminAuthRepository) { AdminViewModel(adminAuthRepository) }
 
         LaunchedEffect(currentScreen) {
             scrollState.scrollTo(0)
