@@ -33,20 +33,38 @@ fun PlayersScreen(
             title = "Plantilla",
             subtitle = "Racha, goles y partidos de cada jugador."
         )
-        uiState.players.forEach { stats ->
+        Text(
+            text = "CLASIFICACIÓN DE JUGADORES",
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Black
+        )
+        uiState.players.forEachIndexed { index, stats ->
             FootballCard(modifier = Modifier.fillMaxWidth()) {
                 Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "${index + 1}".padStart(2, '0'),
+                            modifier = Modifier.padding(end = 12.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Black
+                        )
                         Text(
                             text = stats.player.name,
                             modifier = Modifier.weight(1f),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
-                        Text("${stats.goals} goles", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                        Text(
+                            "${stats.goals} G",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black
+                        )
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
