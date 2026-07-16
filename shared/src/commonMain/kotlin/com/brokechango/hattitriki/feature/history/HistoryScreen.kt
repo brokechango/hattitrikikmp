@@ -87,20 +87,17 @@ fun HistoryScreen(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        ScorePill("${match.teamAScore} - ${match.teamBScore}")
+                        ScorePill(
+                            score = "${match.teamAScore} - ${match.teamBScore}",
+                            penaltyScore = match.penaltyShootout?.let {
+                                "${it.teamAScore} - ${it.teamBScore}"
+                            }
+                        )
                         Text(
                             "Equipo B",
                             modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.Bold,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End
-                        )
-                    }
-                    match.penaltyShootoutLabel?.let { penaltyShootout ->
-                        Text(
-                            "Equipo ${match.winner?.name} gana $penaltyShootout",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

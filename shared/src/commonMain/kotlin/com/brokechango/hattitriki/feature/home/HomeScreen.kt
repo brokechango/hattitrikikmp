@@ -97,16 +97,13 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Equipo A", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        ScorePill("${match.teamAScore} - ${match.teamBScore}")
-                        Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    }
-                    match.penaltyShootoutLabel?.let { penaltyShootout ->
-                        Text(
-                            "Equipo ${match.winner?.name} gana $penaltyShootout",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = CrestGold,
-                            fontWeight = FontWeight.Bold
+                        ScorePill(
+                            score = "${match.teamAScore} - ${match.teamBScore}",
+                            penaltyScore = match.penaltyShootout?.let {
+                                "${it.teamAScore} - ${it.teamBScore}"
+                            }
                         )
+                        Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                 }
             }

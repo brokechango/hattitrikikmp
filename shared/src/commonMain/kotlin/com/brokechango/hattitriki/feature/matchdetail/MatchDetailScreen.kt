@@ -109,22 +109,15 @@ private fun MatchScoreboard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
             )
-            ScorePill("$teamAScore  -  $teamBScore")
+            ScorePill(
+                score = "$teamAScore - $teamBScore",
+                penaltyScore = penaltyShootout?.let { "${it.teamAScore} - ${it.teamBScore}" }
+            )
             Text(
                 text = "Equipo B",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
-            )
-        }
-        penaltyShootout?.let { shootout ->
-            Text(
-                "Equipo ${shootout.winner.name} gana ${shootout.teamAScore} - ${shootout.teamBScore} en penaltis",
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodySmall,
-                color = CrestGold,
-                fontWeight = FontWeight.Bold
             )
         }
     }
