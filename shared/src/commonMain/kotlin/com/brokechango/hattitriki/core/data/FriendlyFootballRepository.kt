@@ -82,7 +82,7 @@ private data class StoredPublicMatch(
 ) {
     fun toFriendlyMatch(): FriendlyMatch = FriendlyMatch(
         id = id,
-        dateLabel = playedOn,
+        dateLabel = playedOn.toDisplayDate(),
         teamAScore = teamAScore,
         teamBScore = teamBScore,
         players = participants.map {
@@ -107,6 +107,15 @@ private data class StoredPublicMatch(
             null
         }
     )
+}
+
+private fun String.toDisplayDate(): String {
+    val dateParts = split('-')
+    return if (dateParts.size == 3 && dateParts.all { it.isNotBlank() }) {
+        "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}"
+    } else {
+        this
+    }
 }
 
 @Serializable
