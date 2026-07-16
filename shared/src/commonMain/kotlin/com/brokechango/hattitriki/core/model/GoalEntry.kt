@@ -4,5 +4,6 @@ data class GoalEntry(
     val playerId: String,
     val team: TeamSide,
     val count: Int,
-    val goalkeeperId: String
+    val goalkeeperId: String,
+    val isOwnGoal: Boolean = false
 )

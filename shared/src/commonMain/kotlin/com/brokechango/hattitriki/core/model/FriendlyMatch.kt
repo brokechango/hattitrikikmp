@@ -6,12 +6,35 @@ data class FriendlyMatch(
     val teamAScore: Int,
     val teamBScore: Int,
     val players: List<MatchPlayer>,
-    val goals: List<GoalEntry>
+    val goals: List<GoalEntry>,
+    val penaltyShootout: PenaltyShootout? = null
 ) {
+    init {
+        require(penaltyShootout == null || teamAScore == teamBScore) {
+            "A penalty shootout can only decide a drawn match."
+        }
+    }
+
     val winner: TeamSide?
         get() = when {
             teamAScore > teamBScore -> TeamSide.A
             teamBScore > teamAScore -> TeamSide.B
-            else -> null
+            else -> penaltyShootout?.winner
         }
+
+    val penaltyShootoutLabel: String?
+        get() = penaltyShootout?.let { "${it.teamAScore} - ${it.teamBScore} en penaltis" }
+}
+
+data class PenaltyShootout(
+    val teamAScore: Int,
+    val teamBScore: Int
+) {
+    init {
+        require(teamAScore >= 0 && teamBScore >= 0) { "Penalty scores cannot be negative." }
+        require(teamAScore != teamBScore) { "A penalty shootout must have a winner." }
+    }
+
+    val winner: TeamSide
+        get() = if (teamAScore > teamBScore) TeamSide.A else TeamSide.B
 }
