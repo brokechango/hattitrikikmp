@@ -7,7 +7,14 @@ import com.brokechango.hattitriki.core.auth.createAdminAuthRepository
 import platform.Foundation.NSBundle
 
 fun MainViewController() = createAdminAuthRepositoryOrNull().let { authRepository ->
-    ComposeUIViewController { App(adminAuthRepository = authRepository) }
+    val appVersion = NSBundle.mainBundle.objectForInfoDictionaryKey("CFBundleShortVersionString") as? String
+        ?: "1.0"
+    ComposeUIViewController {
+        App(
+            adminAuthRepository = authRepository,
+            appVersion = appVersion
+        )
+    }
 }
 
 private fun createAdminAuthRepositoryOrNull(): AdminAuthRepository? = runCatching {

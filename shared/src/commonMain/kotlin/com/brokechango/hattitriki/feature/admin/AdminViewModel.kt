@@ -27,8 +27,6 @@ class AdminViewModel(
             is AdminEvent.PasswordChanged -> updateForm(password = event.value)
             AdminEvent.SubmitLogin -> login()
             AdminEvent.LogoutClicked -> logout()
-            AdminEvent.NewMatchClicked,
-            AdminEvent.AddPlayerClicked -> Unit
         }
     }
 

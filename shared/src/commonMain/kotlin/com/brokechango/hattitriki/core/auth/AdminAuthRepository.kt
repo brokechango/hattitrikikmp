@@ -1,5 +1,8 @@
 package com.brokechango.hattitriki.core.auth
 
+import com.brokechango.hattitriki.core.logging.logSupabaseFailure
+import com.brokechango.hattitriki.core.logging.logSupabaseRequest
+import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -24,31 +27,43 @@ sealed interface AdminLoginResult {
  * writes; this check only determines what the app displays.
  */
 class AdminAuthRepository internal constructor(
-    private val client: SupabaseClient
+    internal val client: SupabaseClient
 ) {
-    suspend fun login(email: String, password: String): AdminLoginResult = try {
-        client.auth.signInWith(Email) {
-            this.email = email
-            this.password = password
+    suspend fun login(email: String, password: String): AdminLoginResult {
+        logSupabaseRequest("Iniciar sesión de administrador")
+        return try {
+            client.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+
+            val user = client.auth.currentUserOrNull()
+                ?: return AdminLoginResult.Failure("No se pudo recuperar la sesión iniciada.")
+
+            val profile = findProfile(user.id)
+
+            if (profile.role == ADMIN_ROLE) {
+                logSupabaseSuccess("Iniciar sesión de administrador")
+                AdminLoginResult.Authorized
+            } else {
+                logout()
+                AdminLoginResult.NotAdministrator
+            }
+        } catch (exception: Exception) {
+            logSupabaseFailure("Iniciar sesión de administrador", exception)
+            AdminLoginResult.Failure(loginErrorMessage(exception))
         }
-
-        val user = client.auth.currentUserOrNull()
-            ?: return AdminLoginResult.Failure("No se pudo recuperar la sesión iniciada.")
-
-        val profile = findProfile(user.id)
-
-        if (profile.role == ADMIN_ROLE) {
-            AdminLoginResult.Authorized
-        } else {
-            client.auth.signOut()
-            AdminLoginResult.NotAdministrator
-        }
-    } catch (exception: Exception) {
-        AdminLoginResult.Failure(loginErrorMessage(exception))
     }
 
     suspend fun logout() {
-        client.auth.signOut()
+        logSupabaseRequest("Cerrar sesión de administrador")
+        try {
+            client.auth.signOut()
+            logSupabaseSuccess("Cerrar sesión de administrador")
+        } catch (exception: Exception) {
+            logSupabaseFailure("Cerrar sesión de administrador", exception)
+            throw exception
+        }
     }
 
     suspend fun hasActiveAdminSession(): Boolean {
@@ -58,14 +73,24 @@ class AdminAuthRepository internal constructor(
         }.getOrDefault(false)
     }
 
-    private suspend fun findProfile(userId: String): AdminProfile = client
-        .from("profiles")
-        .select {
-            filter {
-                eq("id", userId)
-            }
+    private suspend fun findProfile(userId: String): AdminProfile {
+        logSupabaseRequest("Consultar perfil de administrador")
+        return try {
+            val profile = client
+                .from("profiles")
+                .select {
+                    filter {
+                        eq("id", userId)
+                    }
+                }
+                .decodeSingle<AdminProfile>()
+            logSupabaseSuccess("Consultar perfil de administrador")
+            profile
+        } catch (exception: Exception) {
+            logSupabaseFailure("Consultar perfil de administrador", exception)
+            throw exception
         }
-        .decodeSingle()
+    }
 
     companion object {
         private const val ADMIN_ROLE = "admin"

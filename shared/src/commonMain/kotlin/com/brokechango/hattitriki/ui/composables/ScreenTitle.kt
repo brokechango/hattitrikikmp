@@ -11,6 +11,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.brokechango.hattitriki.core.design.CrestGold
 
 @Composable
 fun ScreenTitle(
@@ -26,7 +27,8 @@ fun ScreenTitle(
             text = title,
             style = MaterialTheme.typography.headlineLarge,
             letterSpacing = (-0.8).sp,
-            fontWeight = FontWeight.Black
+            fontWeight = FontWeight.Black,
+            color = CrestGold
         )
         subtitle?.let {
             Text(

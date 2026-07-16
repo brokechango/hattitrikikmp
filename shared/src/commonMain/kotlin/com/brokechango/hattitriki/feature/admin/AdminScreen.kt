@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
@@ -22,6 +23,11 @@ import com.brokechango.hattitriki.ui.composables.ScreenTitle
 @Composable
 fun AdminScreen(
     viewModel: AdminViewModel,
+    appVersion: String,
+    onNewMatch: () -> Unit,
+    onAddPlayer: () -> Unit,
+    onManageMatches: () -> Unit,
+    onManagePlayers: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -97,7 +103,7 @@ fun AdminScreen(
         }
 
         OutlinedButton(
-            onClick = { viewModel.onEvent(AdminEvent.NewMatchClicked) },
+            onClick = onNewMatch,
             enabled = uiState.isAdmin,
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -105,11 +111,35 @@ fun AdminScreen(
         }
 
         OutlinedButton(
-            onClick = { viewModel.onEvent(AdminEvent.AddPlayerClicked) },
+            onClick = onManageMatches,
             enabled = uiState.isAdmin,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Anadir jugador")
+            Text("Editar o borrar partidos")
         }
+
+        OutlinedButton(
+            onClick = onAddPlayer,
+            enabled = uiState.isAdmin,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Añadir jugador")
+        }
+
+        OutlinedButton(
+            onClick = onManagePlayers,
+            enabled = uiState.isAdmin,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Editar o borrar jugadores")
+        }
+
+        Text(
+            text = "Versión $appVersion",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.End,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }

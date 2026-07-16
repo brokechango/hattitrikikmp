@@ -3,7 +3,6 @@ package com.brokechango.hattitriki.core.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -14,16 +13,15 @@ import androidx.navigation3.runtime.rememberNavBackStack
 /**
  * Keeps an independent, saveable back stack for every bottom-navigation tab.
  *
- * [backStack] is the flattened stack consumed by NavDisplay. When a secondary
- * tab is active, Home remains beneath it so the system back action returns to
- * Home before the app is dismissed.
+ * Every tab keeps its own stack. The app shell decides how tabs animate; the
+ * stack supplied to NavDisplay is reserved for navigation inside that tab.
  */
 @Composable
 fun rememberHattitrikiNavigationState(): HattitrikiNavigationState {
-    val homeBackStack = rememberNavBackStack(Screens.Home)
-    val historyBackStack = rememberNavBackStack(Screens.History)
-    val playersBackStack = rememberNavBackStack(Screens.Players)
-    val adminBackStack = rememberNavBackStack(Screens.Admin)
+    val homeBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Home)
+    val historyBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.History)
+    val playersBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Players)
+    val adminBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Admin)
     val selectedTab = rememberSaveable { mutableStateOf(HattitrikiTab.Home.name) }
 
     return remember(homeBackStack, historyBackStack, playersBackStack, adminBackStack) {
@@ -43,14 +41,8 @@ class HattitrikiNavigationState internal constructor(
     private val selectedTab: MutableState<String>,
     private val tabBackStacks: Map<HattitrikiTab, MutableList<NavKey>>
 ) {
-    private val visibleBackStack = mutableStateListOf<NavKey>()
-
-    init {
-        rebuildVisibleBackStack()
-    }
-
     val backStack: List<NavKey>
-        get() = visibleBackStack
+        get() = activeBackStack
 
     val currentScreen: Screens
         get() = activeBackStack.last() as Screens
@@ -60,7 +52,6 @@ class HattitrikiNavigationState internal constructor(
 
     fun selectTopLevel(screen: Screens) {
         selectedTab.value = HattitrikiTab.from(screen).name
-        rebuildVisibleBackStack()
     }
 
     fun navigate(screen: Screens) {
@@ -70,7 +61,6 @@ class HattitrikiNavigationState internal constructor(
         } else {
             activeBackStack.add(screen)
         }
-        rebuildVisibleBackStack()
     }
 
     fun navigateBack() {
@@ -79,8 +69,10 @@ class HattitrikiNavigationState internal constructor(
         } else if (activeTab != HattitrikiTab.Home) {
             selectedTab.value = HattitrikiTab.Home.name
         }
-        rebuildVisibleBackStack()
     }
+
+    fun backStackFor(topLevelScreen: Screens): List<NavKey> =
+        checkNotNull(tabBackStacks[HattitrikiTab.from(topLevelScreen)])
 
     private val activeTab: HattitrikiTab
         get() = HattitrikiTab.valueOf(selectedTab.value)
@@ -88,13 +80,6 @@ class HattitrikiNavigationState internal constructor(
     private val activeBackStack: MutableList<NavKey>
         get() = checkNotNull(tabBackStacks[activeTab])
 
-    private fun rebuildVisibleBackStack() {
-        visibleBackStack.clear()
-        visibleBackStack.addAll(checkNotNull(tabBackStacks[HattitrikiTab.Home]))
-        if (activeTab != HattitrikiTab.Home) {
-            visibleBackStack.addAll(activeBackStack)
-        }
-    }
 }
 
 internal enum class HattitrikiTab(val screen: Screens) {

@@ -23,6 +23,24 @@ sealed interface Screens : NavKey {
     data object Admin : Screens
 
     @Serializable
+    data object NewMatch : Screens
+
+    @Serializable
+    data object NewPlayer : Screens
+
+    @Serializable
+    data object ManageMatches : Screens
+
+    @Serializable
+    data object ManagePlayers : Screens
+
+    @Serializable
+    data class EditMatch(val matchId: String) : Screens
+
+    @Serializable
+    data class EditPlayer(val playerId: String) : Screens
+
+    @Serializable
     data class MatchDetail(val matchId: String) : Screens
 }
 
@@ -33,6 +51,12 @@ val screensSavedStateConfiguration = SavedStateConfiguration {
             subclass(Screens.History::class, Screens.History.serializer())
             subclass(Screens.Players::class, Screens.Players.serializer())
             subclass(Screens.Admin::class, Screens.Admin.serializer())
+            subclass(Screens.NewMatch::class, Screens.NewMatch.serializer())
+            subclass(Screens.NewPlayer::class, Screens.NewPlayer.serializer())
+            subclass(Screens.ManageMatches::class, Screens.ManageMatches.serializer())
+            subclass(Screens.ManagePlayers::class, Screens.ManagePlayers.serializer())
+            subclass(Screens.EditMatch::class, Screens.EditMatch.serializer())
+            subclass(Screens.EditPlayer::class, Screens.EditPlayer.serializer())
             subclass(Screens.MatchDetail::class, Screens.MatchDetail.serializer())
         }
     }

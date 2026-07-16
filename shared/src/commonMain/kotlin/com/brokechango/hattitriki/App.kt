@@ -1,5 +1,6 @@
 package com.brokechango.hattitriki
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -42,6 +43,9 @@ import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
 import com.brokechango.hattitriki.core.auth.AdminAuthRepository
+import com.brokechango.hattitriki.core.data.AdminMatchRepository
+import com.brokechango.hattitriki.core.data.AdminPlayerRepository
+import com.brokechango.hattitriki.core.data.SupabaseFriendlyFootballRepository
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
@@ -58,6 +62,14 @@ import com.brokechango.hattitriki.feature.home.HomeViewModel
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailEvent
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailScreen
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailViewModel
+import com.brokechango.hattitriki.feature.managematches.ManageMatchesScreen
+import com.brokechango.hattitriki.feature.managematches.ManageMatchesViewModel
+import com.brokechango.hattitriki.feature.manageplayers.ManagePlayersScreen
+import com.brokechango.hattitriki.feature.manageplayers.ManagePlayersViewModel
+import com.brokechango.hattitriki.feature.newmatch.NewMatchScreen
+import com.brokechango.hattitriki.feature.newmatch.NewMatchViewModel
+import com.brokechango.hattitriki.feature.newplayer.NewPlayerScreen
+import com.brokechango.hattitriki.feature.newplayer.NewPlayerViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
 import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
@@ -68,19 +80,28 @@ import org.jetbrains.compose.resources.painterResource
 @Composable
 @Preview
 @OptIn(ExperimentalMaterial3Api::class)
-fun App(adminAuthRepository: AdminAuthRepository? = null) {
+fun App(
+    adminAuthRepository: AdminAuthRepository? = null,
+    appVersion: String = "1.0"
+) {
     HattitrikiTheme {
         val navigation = rememberHattitrikiNavigationState()
         val currentScreen = navigation.currentScreen
+        val isPlayersScreen = currentScreen == Screens.Players
         val scrollState = rememberScrollState()
 
-        val homeViewModel = remember { HomeViewModel() }
-        val historyViewModel = remember { HistoryViewModel() }
-        val playersViewModel = remember { PlayersViewModel() }
+        val footballRepository = remember(adminAuthRepository) {
+            adminAuthRepository?.let { SupabaseFriendlyFootballRepository(it.client) }
+        }
+        val homeViewModel = remember(footballRepository) { HomeViewModel(footballRepository) }
+        val historyViewModel = remember(footballRepository) { HistoryViewModel(footballRepository) }
+        val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
         val adminViewModel = remember(adminAuthRepository) { AdminViewModel(adminAuthRepository) }
 
         LaunchedEffect(currentScreen) {
-            scrollState.scrollTo(0)
+            if (!isPlayersScreen) {
+                scrollState.scrollTo(0)
+            }
         }
 
         Scaffold(
@@ -100,22 +121,50 @@ fun App(adminAuthRepository: AdminAuthRepository? = null) {
                     onNavigate = navigation::selectTopLevel
                 )
             }
-        ) { innerPadding ->
-            PitchBackground(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(scrollState)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.TopCenter
+            ) { innerPadding ->
+                PitchBackground(
+                    modifier = (
+                        Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                    ).let { modifier ->
+                        if (isPlayersScreen) modifier else modifier.verticalScroll(scrollState)
+                    }
                 ) {
-                    Box(modifier = Modifier.widthIn(max = 1040.dp)) {
-                        NavDisplay(
-                            backStack = navigation.backStack,
+                    Box(
+                        modifier = if (isPlayersScreen) {
+                            Modifier.fillMaxSize().padding(16.dp)
+                        } else {
+                            Modifier.fillMaxWidth().padding(16.dp)
+                        },
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Box(
+                            modifier = if (isPlayersScreen) {
+                                Modifier.widthIn(max = 1040.dp).fillMaxSize()
+                            } else {
+                                Modifier.widthIn(max = 1040.dp)
+                            }
+                        ) {
+                        AnimatedContent(
+                            targetState = navigation.currentTopLevelScreen,
+                            transitionSpec = {
+                                val direction = if (
+                                    topLevelScreenIndex(targetState) > topLevelScreenIndex(initialState)
+                                ) 1 else -1
+
+                                slideInHorizontally(
+                                    initialOffsetX = { direction * it },
+                                    animationSpec = tween(300)
+                                ) togetherWith slideOutHorizontally(
+                                    targetOffsetX = { -direction * it },
+                                    animationSpec = tween(300)
+                                )
+                            },
+                            label = "Bottom navigation transition"
+                        ) { topLevelScreen ->
+                            NavDisplay(
+                            backStack = navigation.backStackFor(topLevelScreen),
                             onBack = navigation::navigateBack,
                             entryProvider = entryProvider {
                                 entry<Screens.Home> {
@@ -153,6 +202,7 @@ fun App(adminAuthRepository: AdminAuthRepository? = null) {
                                 entry<Screens.Players> {
                                     PlayersScreen(
                                         viewModel = playersViewModel,
+                                        modifier = Modifier.fillMaxSize(),
                                         onEvent = { event ->
                                             when (event) {
                                                 is PlayersEvent.SelectCategory -> {
@@ -168,12 +218,108 @@ fun App(adminAuthRepository: AdminAuthRepository? = null) {
                                 }
 
                                 entry<Screens.Admin> {
-                                    AdminScreen(viewModel = adminViewModel)
+                                    AdminScreen(
+                                        viewModel = adminViewModel,
+                                        appVersion = appVersion,
+                                        onNewMatch = { navigation.navigate(Screens.NewMatch) },
+                                        onAddPlayer = { navigation.navigate(Screens.NewPlayer) },
+                                        onManageMatches = { navigation.navigate(Screens.ManageMatches) },
+                                        onManagePlayers = { navigation.navigate(Screens.ManagePlayers) }
+                                    )
+                                }
+
+                                entry<Screens.NewMatch> {
+                                    val newMatchViewModel = remember(adminAuthRepository) {
+                                        NewMatchViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminMatchRepository(repository.client, repository)
+                                            }
+                                        )
+                                    }
+                                    NewMatchScreen(
+                                        viewModel = newMatchViewModel,
+                                        onSaved = navigation::navigateBack
+                                    )
+                                }
+
+                                entry<Screens.NewPlayer> {
+                                    val newPlayerViewModel = remember(adminAuthRepository) {
+                                        NewPlayerViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminPlayerRepository(repository.client, repository)
+                                            }
+                                        )
+                                    }
+                                    NewPlayerScreen(
+                                        viewModel = newPlayerViewModel,
+                                        onSaved = navigation::navigateBack
+                                    )
+                                }
+
+                                entry<Screens.ManageMatches> {
+                                    val manageMatchesViewModel = remember(adminAuthRepository) {
+                                        ManageMatchesViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminMatchRepository(repository.client, repository)
+                                            }
+                                        )
+                                    }
+                                    ManageMatchesScreen(
+                                        viewModel = manageMatchesViewModel,
+                                        onEdit = { matchId -> navigation.navigate(Screens.EditMatch(matchId)) }
+                                    )
+                                }
+
+                                entry<Screens.ManagePlayers> {
+                                    val managePlayersViewModel = remember(adminAuthRepository) {
+                                        ManagePlayersViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminPlayerRepository(repository.client, repository)
+                                            }
+                                        )
+                                    }
+                                    ManagePlayersScreen(
+                                        viewModel = managePlayersViewModel,
+                                        onEdit = { playerId -> navigation.navigate(Screens.EditPlayer(playerId)) }
+                                    )
+                                }
+
+                                entry<Screens.EditMatch> { screen ->
+                                    val editMatchViewModel = remember(adminAuthRepository, screen.matchId) {
+                                        NewMatchViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminMatchRepository(repository.client, repository)
+                                            },
+                                            matchId = screen.matchId
+                                        )
+                                    }
+                                    NewMatchScreen(
+                                        viewModel = editMatchViewModel,
+                                        onSaved = navigation::navigateBack
+                                    )
+                                }
+
+                                entry<Screens.EditPlayer> { screen ->
+                                    val editPlayerViewModel = remember(adminAuthRepository, screen.playerId) {
+                                        NewPlayerViewModel(
+                                            adminAuthRepository?.let { repository ->
+                                                AdminPlayerRepository(repository.client, repository)
+                                            },
+                                            playerId = screen.playerId
+                                        )
+                                    }
+                                    NewPlayerScreen(
+                                        viewModel = editPlayerViewModel,
+                                        onSaved = navigation::navigateBack
+                                    )
                                 }
 
                                 entry<Screens.MatchDetail> { screen ->
-                                    val matchDetailViewModel = remember(screen.matchId) {
-                                        MatchDetailViewModel(matchId = screen.matchId)
+                                    val matchDetailViewModel = remember(screen.matchId, footballRepository) {
+                                        MatchDetailViewModel(
+                                            matchId = screen.matchId,
+                                            repository = footballRepository
+                                        )
                                     }
                                     MatchDetailScreen(
                                         viewModel = matchDetailViewModel,
@@ -214,11 +360,20 @@ fun App(adminAuthRepository: AdminAuthRepository? = null) {
                             }
 
                         )
+                        }
                     }
                 }
             }
         }
     }
+}
+
+private fun topLevelScreenIndex(screen: Screens): Int = when (screen) {
+    Screens.Home -> 0
+    Screens.History -> 1
+    Screens.Players -> 2
+    Screens.Admin -> 3
+    else -> error("Only bottom-navigation screens can be animated as tabs: $screen")
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -279,6 +434,12 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
     Screens.History -> "Marcador historico"
     Screens.Players -> "Clasificaciones"
     Screens.Admin -> "Zona mister"
+    Screens.NewMatch -> "Nuevo partido"
+    Screens.NewPlayer -> "Añadir jugador"
+    Screens.ManageMatches -> "Gestionar partidos"
+    Screens.ManagePlayers -> "Gestionar jugadores"
+    is Screens.EditMatch -> "Editar partido"
+    is Screens.EditPlayer -> "Editar jugador"
     is Screens.MatchDetail -> "Acta del partido"
 }
 

@@ -17,7 +17,10 @@ class MainActivity : ComponentActivity() {
         val adminAuthRepository = createAdminAuthRepository()
 
         setContent {
-            App(adminAuthRepository = adminAuthRepository)
+            App(
+                adminAuthRepository = adminAuthRepository,
+                appVersion = BuildConfig.VERSION_NAME
+            )
         }
     }
 }

@@ -2,9 +2,9 @@
 
 Aplicación multiplataforma para llevar los resultados, estadísticas y clasificaciones de una liga de fútbol amistosa.
 
-Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfaz y la lógica entre Android e iOS. Actualmente incluye datos de ejemplo para poder explorar la experiencia sin depender de un servicio externo.
+Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfaz y la lógica entre Android e iOS. Los resultados y clasificaciones se consultan en Supabase.
 
-> Estado: en desarrollo. La consulta de partidos y estadísticas está disponible; la edición de datos y el acceso de administrador están preparados visualmente, pero aún no se conectan a Firebase.
+> Estado: en desarrollo. La consulta pública y la zona de administración usan Supabase; los administradores pueden crear actas completas y dar de alta jugadores.
 
 ## Funcionalidades
 
@@ -12,6 +12,7 @@ Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfa
 - Histórico de partidos y acceso al acta de cada encuentro.
 - Clasificaciones de jugadores por estadísticas.
 - Detalle de partidos, goles y participación de porteros.
+- Zona míster con login de Supabase, creación de actas completas y altas de jugadores para administradores.
 - Navegación con animaciones y estado restaurable.
 - Interfaz compartida para Android e iOS.
 
@@ -68,6 +69,10 @@ Antes de compilar Android, añade estos archivos locales; no se versionan para p
 
 No incluyas estos archivos ni sus valores en commits o incidencias públicas.
 
+### Base de datos de partidos programados
+
+Antes de usar la app, aplica en orden `supabase/migrations/20260716140000_admin_acta_functions.sql`, `supabase/migrations/20260716150000_admin_edit_delete_functions.sql`, `supabase/migrations/20260716160000_multiple_goalkeepers_per_match.sql`, `supabase/migrations/20260716170000_own_goals.sql`, `supabase/migrations/20260716180000_players_can_participate_in_both_teams.sql`, `supabase/migrations/20260716190000_fix_own_goal_team_validation.sql`, `supabase/migrations/20260716200000_penalty_shootouts.sql`, `supabase/migrations/20260716210000_cast_acta_team_side.sql` y `supabase/migrations/20260716220000_public_league_read_functions.sql` en el SQL Editor de tu proyecto Supabase o con la CLI de Supabase. Las RPC públicas exponen solo resultados, alineaciones, goles y nombres de jugadores; las RPC de administración comprueban el rol `admin` y permiten crear, editar y borrar actas o jugadores. El cliente nunca usa una clave `service_role`.
+
 ## Ejecutar el proyecto
 
 ### Android
@@ -100,10 +105,7 @@ En macOS también puedes ejecutar las pruebas del simulador de iOS:
 
 ## Próximos pasos
 
-- Conectar la autenticación de administrador con Firebase Auth.
-- Persistir jugadores y partidos en Firestore o Supabase.
-- Permitir crear y editar partidos desde la zona de administración.
-- Sustituir los datos de muestra por datos sincronizados de la liga.
+- Añadir actualización manual o en tiempo real para reflejar nuevos resultados sin reiniciar la pantalla.
 
 ## Licencia
 
