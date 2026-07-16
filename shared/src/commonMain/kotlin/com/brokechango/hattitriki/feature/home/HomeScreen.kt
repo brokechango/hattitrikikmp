@@ -54,6 +54,15 @@ fun HomeScreen(
             subtitle = "Resultados, rachas y campeones de la liga Genuine."
         )
 
+        if (uiState.isLoading) {
+            Text("Cargando datos de la liga…")
+            return@Column
+        }
+        uiState.errorMessage?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error)
+            return@Column
+        }
+
         uiState.latestMatch?.let { match ->
             FootballCard(
                 modifier = Modifier
@@ -91,8 +100,23 @@ fun HomeScreen(
                         ScorePill("${match.teamAScore} - ${match.teamBScore}")
                         Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
+                    match.penaltyShootoutLabel?.let { penaltyShootout ->
+                        Text(
+                            "Equipo ${match.winner?.name} gana $penaltyShootout",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = CrestGold,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
+        }
+
+        if (uiState.latestMatch == null) {
+            Text(
+                "Todavía no hay partidos guardados.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         Column(

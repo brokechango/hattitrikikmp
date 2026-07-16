@@ -9,9 +9,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -19,6 +22,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,14 +49,26 @@ fun PlayersScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val categories = PlayerRankingCategory.entries
 
+    LaunchedEffect(viewModel) {
+        viewModel.refresh()
+    }
+
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         ScreenTitle(
             title = "Clasificaciones",
             subtitle = ""
         )
+        if (uiState.isLoading) {
+            Text("Cargando clasificaciones…")
+            return@Column
+        }
+        uiState.errorMessage?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error)
+            return@Column
+        }
         RankingSummary(
             category = uiState.selectedCategory,
             playerCount = uiState.rankings.size
@@ -69,7 +85,10 @@ fun PlayersScreen(
         RankingTable(
             category = uiState.selectedCategory,
             rankings = uiState.rankings,
-            showRecentForm = uiState.rankingView == RankingView.DETAILED
+            showRecentForm = uiState.rankingView == RankingView.DETAILED,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
         )
     }
 }
@@ -208,10 +227,15 @@ private fun RankingTable(
     showRecentForm: Boolean,
     modifier: Modifier = Modifier
 ) {
-    FootballCard(modifier = modifier.fillMaxWidth()) {
-        Column {
-            RankingTableHeader(category = category)
-            rankings.forEachIndexed { index, ranking ->
+    FootballCard(modifier = modifier) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
+            item(key = "header") {
+                RankingTableHeader(category = category)
+            }
+            itemsIndexed(
+                items = rankings,
+                key = { _, ranking -> ranking.stats.player.id }
+            ) { index, ranking ->
                 RankingRow(
                     index = index,
                     ranking = ranking,

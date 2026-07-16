@@ -4,10 +4,12 @@ import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 
 data class HomeUiState(
-    val latestMatch: FriendlyMatch?,
-    val totalMatches: Int,
-    val totalGoals: Int,
-    val featuredStats: List<HomeFeaturedStat>
+    val latestMatch: FriendlyMatch? = null,
+    val totalMatches: Int = 0,
+    val totalGoals: Int = 0,
+    val featuredStats: List<HomeFeaturedStat> = emptyList(),
+    val isLoading: Boolean = true,
+    val errorMessage: String? = null
 )
 
 data class HomeFeaturedStat(

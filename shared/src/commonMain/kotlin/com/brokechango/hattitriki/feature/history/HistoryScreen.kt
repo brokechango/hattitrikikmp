@@ -34,12 +34,26 @@ fun HistoryScreen(
             title = "Resultados",
             subtitle = "Todos los partidos guardados de la liga del grupo."
         )
+        if (uiState.isLoading) {
+            Text("Cargando partidos…")
+            return@Column
+        }
+        uiState.errorMessage?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error)
+            return@Column
+        }
         Text(
             text = "PARTIDOS FINALIZADOS",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Black
         )
+        if (uiState.matches.isEmpty()) {
+            Text(
+                "Todavía no hay partidos guardados.",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         uiState.matches.forEach { match ->
             FootballCard(
                 modifier = Modifier
@@ -79,6 +93,14 @@ fun HistoryScreen(
                             modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.Bold,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
+                    match.penaltyShootoutLabel?.let { penaltyShootout ->
+                        Text(
+                            "Equipo ${match.winner?.name} gana $penaltyShootout",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

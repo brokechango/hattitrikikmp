@@ -45,6 +45,14 @@ fun MatchDetailScreen(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
+        if (uiState.isLoading) {
+            Text("Cargando acta…")
+            return@Column
+        }
+        uiState.errorMessage?.let { message ->
+            Text(message, color = MaterialTheme.colorScheme.error)
+            return@Column
+        }
         if (match == null) {
             Text("No se encontro el partido.")
             return@Column
@@ -56,7 +64,8 @@ fun MatchDetailScreen(
         )
         MatchScoreboard(
             teamAScore = match.teamAScore,
-            teamBScore = match.teamBScore
+            teamBScore = match.teamBScore,
+            penaltyShootout = match.penaltyShootout
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -81,27 +90,40 @@ fun MatchDetailScreen(
 @Composable
 private fun MatchScoreboard(
     teamAScore: Int,
-    teamBScore: Int
+    teamBScore: Int,
+    penaltyShootout: com.brokechango.hattitriki.core.model.PenaltyShootout?
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Equipo A",
-            modifier = Modifier.weight(1f),
-            textAlign = TextAlign.End,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black
-        )
-        ScorePill("$teamAScore  -  $teamBScore")
-        Text(
-            text = "Equipo B",
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Black
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Equipo A",
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.End,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+            ScorePill("$teamAScore  -  $teamBScore")
+            Text(
+                text = "Equipo B",
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black
+            )
+        }
+        penaltyShootout?.let { shootout ->
+            Text(
+                "Equipo ${shootout.winner.name} gana ${shootout.teamAScore} - ${shootout.teamBScore} en penaltis",
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodySmall,
+                color = CrestGold,
+                fontWeight = FontWeight.Bold
+            )
+        }
     }
 }
 

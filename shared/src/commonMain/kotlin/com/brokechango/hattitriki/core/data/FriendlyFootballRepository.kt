@@ -1,186 +1,169 @@
 package com.brokechango.hattitriki.core.data
 
+import com.brokechango.hattitriki.core.logging.logSupabaseFailure
+import com.brokechango.hattitriki.core.logging.logSupabaseRequest
+import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
 import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.GoalEntry
 import com.brokechango.hattitriki.core.model.MatchPlayer
+import com.brokechango.hattitriki.core.model.PenaltyShootout
 import com.brokechango.hattitriki.core.model.Player
 import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.core.model.TeamSide
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.postgrest.rpc
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+data class FootballSnapshot(
+    val players: List<Player>,
+    val matches: List<FriendlyMatch>
+)
+
+sealed interface FootballSnapshotResult {
+    data class Success(val snapshot: FootballSnapshot) : FootballSnapshotResult
+    data class Failure(val message: String) : FootballSnapshotResult
+}
 
 interface FriendlyFootballRepository {
-    fun getPlayers(): List<Player>
-    fun getMatches(): List<FriendlyMatch>
-    fun getMatch(matchId: String): FriendlyMatch?
-    fun getStats(): List<PlayerStats>
+    suspend fun loadSnapshot(): FootballSnapshotResult
 }
 
-object InMemoryFriendlyFootballRepository : FriendlyFootballRepository {
-    private val players = listOf(
-        Player(id = "alex", name = "Alex"),
-        Player(id = "bruno", name = "Bruno"),
-        Player(id = "carlos", name = "Carlos"),
-        Player(id = "dani", name = "Dani"),
-        Player(id = "ivan", name = "Ivan"),
-        Player(id = "miguel", name = "Miguel"),
-        Player(id = "pablo", name = "Pablo"),
-        Player(id = "sergio", name = "Sergio")
-    )
+/**
+ * Public, read-only source for the league. The database RPCs deliberately
+ * expose only the fields needed by the public screens; write access remains
+ * limited to the existing administrator RPCs and RLS policies.
+ */
+class SupabaseFriendlyFootballRepository(
+    private val client: SupabaseClient
+) : FriendlyFootballRepository {
+    override suspend fun loadSnapshot(): FootballSnapshotResult = try {
+        logSupabaseRequest("Cargar datos públicos de la liga")
+        val players = client.postgrest
+            .rpc("get_public_league_players")
+            .decodeList<StoredPublicPlayer>()
+            .map { Player(id = it.id, name = it.name, isActive = it.isActive) }
+        val matches = client.postgrest
+            .rpc("get_public_friendly_matches")
+            .decodeList<StoredPublicMatch>()
+            .map(StoredPublicMatch::toFriendlyMatch)
 
-    private val matches = listOf(
-        FriendlyMatch(
-            id = "match-5",
-            dateLabel = "Domingo 26 julio",
-            teamAScore = 5,
-            teamBScore = 3,
-            players = listOf(
-                MatchPlayer("alex", TeamSide.A, wasGoalkeeper = true),
-                MatchPlayer("bruno", TeamSide.A),
-                MatchPlayer("carlos", TeamSide.A),
-                MatchPlayer("dani", TeamSide.A),
-                MatchPlayer("ivan", TeamSide.B, wasGoalkeeper = true),
-                MatchPlayer("miguel", TeamSide.B),
-                MatchPlayer("pablo", TeamSide.B),
-                MatchPlayer("sergio", TeamSide.B)
-            ),
-            goals = listOf(
-                GoalEntry("bruno", TeamSide.A, 2, goalkeeperId = "ivan"),
-                GoalEntry("carlos", TeamSide.A, 1, goalkeeperId = "ivan"),
-                GoalEntry("dani", TeamSide.A, 2, goalkeeperId = "ivan"),
-                GoalEntry("miguel", TeamSide.B, 1, goalkeeperId = "alex"),
-                GoalEntry("pablo", TeamSide.B, 1, goalkeeperId = "alex"),
-                GoalEntry("sergio", TeamSide.B, 1, goalkeeperId = "alex")
-            )
-        ),
-        FriendlyMatch(
-            id = "match-4",
-            dateLabel = "Domingo 19 julio",
-            teamAScore = 2,
-            teamBScore = 5,
-            players = listOf(
-                MatchPlayer("alex", TeamSide.A),
-                MatchPlayer("ivan", TeamSide.A, wasGoalkeeper = true),
-                MatchPlayer("pablo", TeamSide.A),
-                MatchPlayer("sergio", TeamSide.A),
-                MatchPlayer("bruno", TeamSide.B),
-                MatchPlayer("carlos", TeamSide.B, wasGoalkeeper = true),
-                MatchPlayer("dani", TeamSide.B),
-                MatchPlayer("miguel", TeamSide.B)
-            ),
-            goals = listOf(
-                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "carlos"),
-                GoalEntry("sergio", TeamSide.A, 1, goalkeeperId = "carlos"),
-                GoalEntry("bruno", TeamSide.B, 2, goalkeeperId = "ivan"),
-                GoalEntry("dani", TeamSide.B, 1, goalkeeperId = "ivan"),
-                GoalEntry("miguel", TeamSide.B, 2, goalkeeperId = "ivan")
-            )
-        ),
-        FriendlyMatch(
-            id = "match-3",
-            dateLabel = "Domingo 12 julio",
-            teamAScore = 7,
-            teamBScore = 5,
-            players = listOf(
-                MatchPlayer("alex", TeamSide.A, wasGoalkeeper = true),
-                MatchPlayer("bruno", TeamSide.A),
-                MatchPlayer("carlos", TeamSide.A),
-                MatchPlayer("dani", TeamSide.A),
-                MatchPlayer("ivan", TeamSide.B, wasGoalkeeper = true),
-                MatchPlayer("miguel", TeamSide.B),
-                MatchPlayer("pablo", TeamSide.B),
-                MatchPlayer("sergio", TeamSide.B)
-            ),
-            goals = listOf(
-                GoalEntry("bruno", TeamSide.A, 2, goalkeeperId = "ivan"),
-                GoalEntry("bruno", TeamSide.A, 1, goalkeeperId = "sergio"),
-                GoalEntry("carlos", TeamSide.A, 2, goalkeeperId = "ivan"),
-                GoalEntry("dani", TeamSide.A, 2, goalkeeperId = "ivan"),
-                GoalEntry("miguel", TeamSide.B, 2, goalkeeperId = "alex"),
-                GoalEntry("pablo", TeamSide.B, 2, goalkeeperId = "alex"),
-                GoalEntry("sergio", TeamSide.B, 1, goalkeeperId = "alex")
-            )
-        ),
-        FriendlyMatch(
-            id = "match-2",
-            dateLabel = "Domingo 5 julio",
-            teamAScore = 4,
-            teamBScore = 4,
-            players = listOf(
-                MatchPlayer("alex", TeamSide.A),
-                MatchPlayer("ivan", TeamSide.A, wasGoalkeeper = true),
-                MatchPlayer("pablo", TeamSide.A),
-                MatchPlayer("sergio", TeamSide.A),
-                MatchPlayer("bruno", TeamSide.B),
-                MatchPlayer("carlos", TeamSide.B, wasGoalkeeper = true),
-                MatchPlayer("dani", TeamSide.B),
-                MatchPlayer("miguel", TeamSide.B)
-            ),
-            goals = listOf(
-                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "carlos"),
-                GoalEntry("pablo", TeamSide.A, 2, goalkeeperId = "carlos"),
-                GoalEntry("sergio", TeamSide.A, 1, goalkeeperId = "carlos"),
-                GoalEntry("bruno", TeamSide.B, 1, goalkeeperId = "ivan"),
-                GoalEntry("dani", TeamSide.B, 2, goalkeeperId = "ivan"),
-                GoalEntry("miguel", TeamSide.B, 1, goalkeeperId = "ivan")
-            )
-        ),
-        FriendlyMatch(
-            id = "match-1",
-            dateLabel = "Domingo 28 junio",
-            teamAScore = 3,
-            teamBScore = 6,
-            players = listOf(
-                MatchPlayer("alex", TeamSide.A),
-                MatchPlayer("carlos", TeamSide.A, wasGoalkeeper = true),
-                MatchPlayer("dani", TeamSide.A),
-                MatchPlayer("miguel", TeamSide.A),
-                MatchPlayer("bruno", TeamSide.B),
-                MatchPlayer("ivan", TeamSide.B),
-                MatchPlayer("pablo", TeamSide.B, wasGoalkeeper = true),
-                MatchPlayer("sergio", TeamSide.B)
-            ),
-            goals = listOf(
-                GoalEntry("alex", TeamSide.A, 1, goalkeeperId = "pablo"),
-                GoalEntry("dani", TeamSide.A, 1, goalkeeperId = "pablo"),
-                GoalEntry("miguel", TeamSide.A, 1, goalkeeperId = "pablo"),
-                GoalEntry("bruno", TeamSide.B, 2, goalkeeperId = "carlos"),
-                GoalEntry("ivan", TeamSide.B, 2, goalkeeperId = "carlos"),
-                GoalEntry("sergio", TeamSide.B, 2, goalkeeperId = "carlos")
+        logSupabaseSuccess("Cargar datos públicos de la liga")
+        FootballSnapshotResult.Success(
+            FootballSnapshot(
+                players = players,
+                matches = matches
             )
         )
-    )
-
-    override fun getPlayers(): List<Player> = players
-
-    override fun getMatches(): List<FriendlyMatch> = matches
-
-    override fun getMatch(matchId: String): FriendlyMatch? = matches.firstOrNull { it.id == matchId }
-
-    override fun getStats(): List<PlayerStats> {
-        return players.map { player ->
-            val playedMatches = matches.filter { match ->
-                match.players.any { it.playerId == player.id }
-            }
-            val wins = playedMatches.count { match ->
-                val side = match.players.first { it.playerId == player.id }.team
-                match.winner == side
-            }
-            val draws = playedMatches.count { it.winner == null }
-            val goals = matches.sumOf { match ->
-                match.goals.filter { it.playerId == player.id }.sumOf { it.count }
-            }
-            val goalkeeperMatches = playedMatches.count { match ->
-                match.players.any { it.playerId == player.id && it.wasGoalkeeper }
-            }
-
-            PlayerStats(
-                player = player,
-                matchesPlayed = playedMatches.size,
-                wins = wins,
-                draws = draws,
-                losses = playedMatches.size - wins - draws,
-                goals = goals,
-                goalkeeperMatches = goalkeeperMatches
-            )
-        }.sortedWith(compareByDescending<PlayerStats> { it.goals }.thenByDescending { it.wins })
+    } catch (exception: Exception) {
+        logSupabaseFailure("Cargar datos públicos de la liga", exception)
+        FootballSnapshotResult.Failure(publicLeagueLoadErrorMessage(exception.message))
     }
 }
+
+@Serializable
+private data class StoredPublicPlayer(
+    val id: String,
+    val name: String,
+    @SerialName("is_active") val isActive: Boolean
+)
+
+@Serializable
+private data class StoredPublicMatch(
+    val id: String,
+    @SerialName("played_on") val playedOn: String,
+    @SerialName("team_a_score") val teamAScore: Int,
+    @SerialName("team_b_score") val teamBScore: Int,
+    @SerialName("team_a_penalty_score") val teamAPenaltyScore: Int? = null,
+    @SerialName("team_b_penalty_score") val teamBPenaltyScore: Int? = null,
+    val participants: List<StoredPublicParticipant>,
+    val goals: List<StoredPublicGoal>
+) {
+    fun toFriendlyMatch(): FriendlyMatch = FriendlyMatch(
+        id = id,
+        dateLabel = playedOn,
+        teamAScore = teamAScore,
+        teamBScore = teamBScore,
+        players = participants.map {
+            MatchPlayer(
+                playerId = it.playerId,
+                team = it.team.toTeamSide(),
+                wasGoalkeeper = it.wasGoalkeeper
+            )
+        },
+        goals = goals.map {
+            GoalEntry(
+                playerId = it.playerId,
+                team = it.team.toTeamSide(),
+                count = it.count,
+                goalkeeperId = it.goalkeeperId,
+                isOwnGoal = it.isOwnGoal
+            )
+        },
+        penaltyShootout = if (teamAPenaltyScore != null && teamBPenaltyScore != null) {
+            PenaltyShootout(teamAPenaltyScore, teamBPenaltyScore)
+        } else {
+            null
+        }
+    )
+}
+
+@Serializable
+private data class StoredPublicParticipant(
+    @SerialName("player_id") val playerId: String,
+    val team: String,
+    @SerialName("was_goalkeeper") val wasGoalkeeper: Boolean
+)
+
+@Serializable
+private data class StoredPublicGoal(
+    @SerialName("player_id") val playerId: String,
+    val team: String,
+    val count: Int,
+    @SerialName("goalkeeper_id") val goalkeeperId: String,
+    @SerialName("is_own_goal") val isOwnGoal: Boolean = false
+)
+
+private fun String.toTeamSide(): TeamSide = when (this) {
+    "A" -> TeamSide.A
+    "B" -> TeamSide.B
+    else -> error("Unknown team side: $this")
+}
+
+fun FootballSnapshot.playerStats(): List<PlayerStats> = players.map { player ->
+    val playedMatches = matches.filter { match ->
+        match.players.any { it.playerId == player.id }
+    }
+    val wins = playedMatches.count { match ->
+        val side = match.players.first { it.playerId == player.id }.team
+        match.winner == side
+    }
+    val draws = playedMatches.count { it.winner == null }
+    val goals = matches.sumOf { match ->
+        match.goals
+            .filter { it.playerId == player.id && !it.isOwnGoal }
+            .sumOf { it.count }
+    }
+    val goalkeeperMatches = playedMatches.count { match ->
+        match.players.any { it.playerId == player.id && it.wasGoalkeeper }
+    }
+
+    PlayerStats(
+        player = player,
+        matchesPlayed = playedMatches.size,
+        wins = wins,
+        draws = draws,
+        losses = playedMatches.size - wins - draws,
+        goals = goals,
+        goalkeeperMatches = goalkeeperMatches
+    )
+}.sortedWith(compareByDescending<PlayerStats> { it.goals }.thenByDescending { it.wins })
+
+internal fun publicLeagueLoadErrorMessage(errorDetails: String?): String = supabaseMessage(
+    errorDetails = errorDetails,
+    setupMessage = "La lectura pública de la liga no está configurada. Aplica la última migración de Supabase.",
+    permissionMessage = "No tienes permisos para consultar los datos de la liga.",
+    connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+    fallbackMessage = "No se han podido cargar los datos de la liga. Inténtalo de nuevo."
+)

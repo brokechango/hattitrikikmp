@@ -1,32 +1,59 @@
 package com.brokechango.hattitriki.feature.home
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.brokechango.hattitriki.core.data.FootballSnapshot
+import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
-import com.brokechango.hattitriki.core.data.InMemoryFriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.playerStats
 import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
-import com.brokechango.hattitriki.core.model.TeamSide
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlin.math.round
 
 class HomeViewModel(
-    private val repository: FriendlyFootballRepository = InMemoryFriendlyFootballRepository
+    private val repository: FriendlyFootballRepository?
 ) : ViewModel() {
-    private val matches = repository.getMatches()
-    private val stats = repository.getStats()
-
-    private val _uiState = MutableStateFlow(
-        HomeUiState(
-            latestMatch = matches.firstOrNull(),
-            totalMatches = matches.size,
-            totalGoals = matches.sumOf { it.teamAScore + it.teamBScore },
-            featuredStats = buildFeaturedStats(matches, stats)
-        )
-    )
+    private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    init {
+        loadLeague()
+    }
+
+    private fun loadLeague() = viewModelScope.launch {
+        val leagueRepository = repository
+        if (leagueRepository == null) {
+            _uiState.value = HomeUiState(
+                isLoading = false,
+                errorMessage = "Falta la configuración local de Supabase en este dispositivo."
+            )
+            return@launch
+        }
+
+        when (val result = leagueRepository.loadSnapshot()) {
+            is FootballSnapshotResult.Success -> updateFromSnapshot(result.snapshot)
+            is FootballSnapshotResult.Failure -> _uiState.value = HomeUiState(
+                isLoading = false,
+                errorMessage = result.message
+            )
+        }
+    }
+
+    private fun updateFromSnapshot(snapshot: FootballSnapshot) {
+        val stats = snapshot.playerStats()
+        _uiState.value = HomeUiState(
+            latestMatch = snapshot.matches.firstOrNull(),
+            totalMatches = snapshot.matches.size,
+            totalGoals = snapshot.matches.sumOf { it.teamAScore + it.teamBScore },
+            featuredStats = buildFeaturedStats(snapshot.matches, stats),
+            isLoading = false
+        )
+    }
 
     private fun buildFeaturedStats(
         matches: List<FriendlyMatch>,
@@ -42,14 +69,9 @@ class HomeViewModel(
             .filter { it.goalkeeperMatches > 0 }
             .map { playerStats ->
                 val goalsAgainst = matches.sumOf { match ->
-                    val goalkeeper = match.players.firstOrNull {
-                        it.playerId == playerStats.player.id && it.wasGoalkeeper
-                    }
-                    when (goalkeeper?.team) {
-                        TeamSide.A -> match.teamBScore
-                        TeamSide.B -> match.teamAScore
-                        null -> 0
-                    }
+                    match.goals
+                        .filter { it.goalkeeperId == playerStats.player.id }
+                        .sumOf { it.count }
                 }
                 playerStats to goalsAgainst
             }
