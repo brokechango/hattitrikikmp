@@ -34,6 +34,7 @@ import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestGoldLight
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 
@@ -97,13 +98,14 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text("Equipo A", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                        ScorePill(
-                            score = "${match.teamAScore} - ${match.teamBScore}",
-                            penaltyScore = match.penaltyShootout?.let {
-                                "${it.teamAScore} - ${it.teamBScore}"
-                            }
-                        )
+                        ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
                         Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                    match.penaltyShootout?.let {
+                        PenaltyScore(
+                            score = "${it.teamAScore} - ${it.teamBScore}",
+                            modifier = Modifier.align(Alignment.CenterHorizontally)
+                        )
                     }
                 }
             }

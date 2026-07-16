@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 
@@ -87,17 +88,18 @@ fun HistoryScreen(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
                         Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        ScorePill(
-                            score = "${match.teamAScore} - ${match.teamBScore}",
-                            penaltyScore = match.penaltyShootout?.let {
-                                "${it.teamAScore} - ${it.teamBScore}"
-                            }
-                        )
+                        ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
                         Text(
                             "Equipo B",
                             modifier = Modifier.weight(1f),
                             fontWeight = FontWeight.Bold,
                             textAlign = androidx.compose.ui.text.style.TextAlign.End
+                        )
+                    }
+                    match.penaltyShootout?.let {
+                        PenaltyScore(
+                            score = "${it.teamAScore} - ${it.teamBScore}",
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

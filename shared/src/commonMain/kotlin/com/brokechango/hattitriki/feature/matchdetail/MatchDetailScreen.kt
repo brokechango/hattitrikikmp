@@ -32,6 +32,7 @@ import com.brokechango.hattitriki.core.design.CrestRed
 import com.brokechango.hattitriki.core.model.GoalEntry
 import com.brokechango.hattitriki.core.model.TeamSide
 import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 
@@ -109,15 +110,18 @@ private fun MatchScoreboard(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
             )
-            ScorePill(
-                score = "$teamAScore - $teamBScore",
-                penaltyScore = penaltyShootout?.let { "${it.teamAScore} - ${it.teamBScore}" }
-            )
+            ScorePill(score = "$teamAScore - $teamBScore")
             Text(
                 text = "Equipo B",
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
+            )
+        }
+        penaltyShootout?.let {
+            PenaltyScore(
+                score = "${it.teamAScore} - ${it.teamBScore}",
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
