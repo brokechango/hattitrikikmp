@@ -28,6 +28,7 @@ fun AdminScreen(
     onAddPlayer: () -> Unit,
     onManageMatches: () -> Unit,
     onManagePlayers: () -> Unit,
+    onTeamRandomizer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -132,6 +133,14 @@ fun AdminScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Editar o borrar jugadores")
+        }
+
+        OutlinedButton(
+            onClick = onTeamRandomizer,
+            enabled = uiState.isAdmin,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Aleatorizador de equipos")
         }
 
         Text(

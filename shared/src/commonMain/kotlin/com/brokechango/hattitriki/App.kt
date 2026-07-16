@@ -70,6 +70,8 @@ import com.brokechango.hattitriki.feature.newmatch.NewMatchScreen
 import com.brokechango.hattitriki.feature.newmatch.NewMatchViewModel
 import com.brokechango.hattitriki.feature.newplayer.NewPlayerScreen
 import com.brokechango.hattitriki.feature.newplayer.NewPlayerViewModel
+import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerScreen
+import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
 import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
@@ -235,7 +237,8 @@ fun App(
                                         onNewMatch = { navigation.navigate(Screens.NewMatch) },
                                         onAddPlayer = { navigation.navigate(Screens.NewPlayer) },
                                         onManageMatches = { navigation.navigate(Screens.ManageMatches) },
-                                        onManagePlayers = { navigation.navigate(Screens.ManagePlayers) }
+                                        onManagePlayers = { navigation.navigate(Screens.ManagePlayers) },
+                                        onTeamRandomizer = { navigation.navigate(Screens.TeamRandomizer) }
                                     )
                                 }
 
@@ -293,6 +296,18 @@ fun App(
                                         viewModel = managePlayersViewModel,
                                         onEdit = { playerId -> navigation.navigate(Screens.EditPlayer(playerId)) }
                                     )
+                                }
+
+                                entry<Screens.TeamRandomizer> {
+                                    val teamRandomizerViewModel = remember(adminAuthRepository, footballRepository) {
+                                        TeamRandomizerViewModel(
+                                            adminPlayerRepository = adminAuthRepository?.let { repository ->
+                                                AdminPlayerRepository(repository.client, repository)
+                                            },
+                                            footballRepository = footballRepository
+                                        )
+                                    }
+                                    TeamRandomizerScreen(viewModel = teamRandomizerViewModel)
                                 }
 
                                 entry<Screens.EditMatch> { screen ->
@@ -450,6 +465,7 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
     Screens.NewPlayer -> "Añadir jugador"
     Screens.ManageMatches -> "Gestionar partidos"
     Screens.ManagePlayers -> "Gestionar jugadores"
+    Screens.TeamRandomizer -> "Aleatorizador"
     is Screens.EditMatch -> "Editar partido"
     is Screens.EditPlayer -> "Editar jugador"
     is Screens.MatchDetail -> "Acta del partido"
