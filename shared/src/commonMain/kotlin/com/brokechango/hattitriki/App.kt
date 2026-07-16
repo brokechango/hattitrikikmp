@@ -117,7 +117,7 @@ fun App(
             topBar = {
                 MatchTopBar(
                     currentScreen = currentScreen,
-                    canNavigateBack = navigation.backStack.size > 1,
+                    canNavigateBack = navigation.canNavigateBack,
                     onBack = navigation::navigateBack
                 )
             },

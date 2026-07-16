@@ -50,6 +50,9 @@ class HattitrikiNavigationState internal constructor(
     val currentTopLevelScreen: Screens
         get() = activeTab.screen
 
+    val canNavigateBack: Boolean
+        get() = activeBackStack.size > 1 || activeTab != HattitrikiTab.Home
+
     fun selectTopLevel(screen: Screens) {
         selectedTab.value = HattitrikiTab.from(screen).name
     }
@@ -71,8 +74,18 @@ class HattitrikiNavigationState internal constructor(
         }
     }
 
-    fun backStackFor(topLevelScreen: Screens): List<NavKey> =
-        checkNotNull(tabBackStacks[HattitrikiTab.from(topLevelScreen)])
+    fun backStackFor(topLevelScreen: Screens): List<NavKey> {
+        val tab = HattitrikiTab.from(topLevelScreen)
+        val tabBackStack = checkNotNull(tabBackStacks[tab])
+
+        // NavDisplay only registers the system back handler when it has a previous entry.
+        // Keep Home below every top-level tab so pressing back from a tab returns there.
+        return if (tab == HattitrikiTab.Home) {
+            tabBackStack
+        } else {
+            checkNotNull(tabBackStacks[HattitrikiTab.Home]) + tabBackStack
+        }
+    }
 
     private val activeTab: HattitrikiTab
         get() = HattitrikiTab.valueOf(selectedTab.value)
