@@ -1,4 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 plugins {
@@ -29,7 +31,7 @@ fun String.asBuildConfigString(): String = "\"${replace("\\", "\\\\").replace("\
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_11
+        jvmTarget = JvmTarget.JVM_17
     }
 }
 dependencies {
@@ -54,8 +56,8 @@ android {
         applicationId = "com.brokechango.hattitriki"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHH")).toInt()
+        versionName = "0.0.1"
         buildConfigField("String", "SUPABASE_URL", localProperty("SUPABASE_URL").asBuildConfigString())
         buildConfigField(
             "String",
@@ -83,10 +85,20 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures {
         buildConfig = true
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            output.outputFileName.set(
+                "${variant.applicationId.get()}-${output.versionName.get()}-(${output.versionCode.get()}).apk"
+            )
+        }
     }
 }

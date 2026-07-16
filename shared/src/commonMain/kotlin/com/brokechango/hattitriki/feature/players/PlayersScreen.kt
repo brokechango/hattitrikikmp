@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,10 +19,14 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +51,7 @@ fun PlayersScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val categories = PlayerRankingCategory.entries
+    var areFiltersVisible by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.refresh()
@@ -58,8 +62,7 @@ fun PlayersScreen(
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         ScreenTitle(
-            title = "Clasificaciones",
-            subtitle = ""
+            title = "Clasificaciones"
         )
         if (uiState.isLoading) {
             Text("Cargando clasificaciones…")
@@ -73,11 +76,17 @@ fun PlayersScreen(
             category = uiState.selectedCategory,
             playerCount = uiState.rankings.size
         )
-        CategoryFilters(
-            categories = categories,
-            selectedCategory = uiState.selectedCategory,
-            onCategorySelected = { category -> onEvent(PlayersEvent.SelectCategory(category)) }
+        FiltersToggle(
+            areFiltersVisible = areFiltersVisible,
+            onClick = { areFiltersVisible = !areFiltersVisible }
         )
+        if (areFiltersVisible) {
+            CategoryFilters(
+                categories = categories,
+                selectedCategory = uiState.selectedCategory,
+                onCategorySelected = { category -> onEvent(PlayersEvent.SelectCategory(category)) }
+            )
+        }
         RankingViewSelector(
             selectedView = uiState.rankingView,
             onViewSelected = { view -> onEvent(PlayersEvent.SelectRankingView(view)) }
@@ -89,6 +98,24 @@ fun PlayersScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun FiltersToggle(
+    areFiltersVisible: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Text(
+            text = if (areFiltersVisible) "Ocultar filtros" else "Mostrar filtros",
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -189,33 +216,45 @@ private fun CategoryFilters(
     onCategorySelected: (PlayerRankingCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    FlowRow(
+    Column(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        categories.forEach { category ->
-            FilterChip(
-                selected = selectedCategory == category,
-                onClick = { onCategorySelected(category) },
-                label = {
-                    Text(
-                        text = category.title,
-                        fontWeight = FontWeight.Bold
+        categories.chunked(2).forEach { categoryRow ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categoryRow.forEach { category ->
+                    FilterChip(
+                        selected = selectedCategory == category,
+                        onClick = { onCategorySelected(category) },
+                        modifier = Modifier.weight(1f),
+                        label = {
+                            Text(
+                                text = category.title,
+                                modifier = Modifier.fillMaxWidth(),
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(
+                            width = 1.dp,
+                            color = if (selectedCategory == category) CrestGold else MaterialTheme.colorScheme.outline
+                        ),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = CrestGold,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     )
-                },
-                shape = RoundedCornerShape(10.dp),
-                border = BorderStroke(
-                    width = 1.dp,
-                    color = if (selectedCategory == category) CrestGold else MaterialTheme.colorScheme.outline
-                ),
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = CrestGold,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
+                }
+                repeat(2 - categoryRow.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }

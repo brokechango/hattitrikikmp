@@ -87,8 +87,10 @@ fun App(
     HattitrikiTheme {
         val navigation = rememberHattitrikiNavigationState()
         val currentScreen = navigation.currentScreen
-        val isPlayersScreen = currentScreen == Screens.Players
-        val scrollState = rememberScrollState()
+        val currentTopLevelScreen = navigation.currentTopLevelScreen
+        val homeScrollState = rememberScrollState()
+        val historyScrollState = rememberScrollState()
+        val adminScrollState = rememberScrollState()
 
         val footballRepository = remember(adminAuthRepository) {
             adminAuthRepository?.let { SupabaseFriendlyFootballRepository(it.client) }
@@ -98,9 +100,13 @@ fun App(
         val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
         val adminViewModel = remember(adminAuthRepository) { AdminViewModel(adminAuthRepository) }
 
-        LaunchedEffect(currentScreen) {
-            if (!isPlayersScreen) {
-                scrollState.scrollTo(0)
+        LaunchedEffect(currentTopLevelScreen) {
+            when (currentTopLevelScreen) {
+                Screens.Home -> homeScrollState.scrollTo(0)
+                Screens.History -> historyScrollState.scrollTo(0)
+                Screens.Admin -> adminScrollState.scrollTo(0)
+                Screens.Players -> Unit
+                else -> error("Only top-level screens can be selected as tabs")
             }
         }
 
@@ -117,56 +123,61 @@ fun App(
             },
             bottomBar = {
                 MainNavigationBar(
-                    currentScreen = navigation.currentTopLevelScreen,
+                    currentScreen = currentTopLevelScreen,
                     onNavigate = navigation::selectTopLevel
                 )
             }
             ) { innerPadding ->
                 PitchBackground(
-                    modifier = (
-                        Modifier
+                    modifier = Modifier
                         .fillMaxSize()
                         .padding(innerPadding)
-                    ).let { modifier ->
-                        if (isPlayersScreen) modifier else modifier.verticalScroll(scrollState)
-                    }
                 ) {
                     Box(
-                        modifier = if (isPlayersScreen) {
-                            Modifier.fillMaxSize().padding(16.dp)
-                        } else {
-                            Modifier.fillMaxWidth().padding(16.dp)
-                        },
+                        modifier = Modifier.fillMaxSize().padding(16.dp),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Box(
-                            modifier = if (isPlayersScreen) {
-                                Modifier.widthIn(max = 1040.dp).fillMaxSize()
-                            } else {
-                                Modifier.widthIn(max = 1040.dp)
-                            }
+                            modifier = Modifier
+                                .widthIn(max = 1040.dp)
+                                .fillMaxSize()
                         ) {
-                        AnimatedContent(
-                            targetState = navigation.currentTopLevelScreen,
-                            transitionSpec = {
-                                val direction = if (
-                                    topLevelScreenIndex(targetState) > topLevelScreenIndex(initialState)
-                                ) 1 else -1
+                            AnimatedContent(
+                                targetState = currentTopLevelScreen,
+                                transitionSpec = {
+                                    val direction = if (
+                                        topLevelScreenIndex(targetState) > topLevelScreenIndex(initialState)
+                                    ) 1 else -1
 
-                                slideInHorizontally(
-                                    initialOffsetX = { direction * it },
-                                    animationSpec = tween(300)
-                                ) togetherWith slideOutHorizontally(
-                                    targetOffsetX = { -direction * it },
-                                    animationSpec = tween(300)
-                                )
-                            },
-                            label = "Bottom navigation transition"
-                        ) { topLevelScreen ->
-                            NavDisplay(
-                            backStack = navigation.backStackFor(topLevelScreen),
-                            onBack = navigation::navigateBack,
-                            entryProvider = entryProvider {
+                                    slideInHorizontally(
+                                        initialOffsetX = { direction * it },
+                                        animationSpec = tween(300)
+                                    ) togetherWith slideOutHorizontally(
+                                        targetOffsetX = { -direction * it },
+                                        animationSpec = tween(300)
+                                    )
+                                },
+                                label = "Bottom navigation transition"
+                            ) { topLevelScreen ->
+                                val scrollState = when (topLevelScreen) {
+                                    Screens.Home -> homeScrollState
+                                    Screens.History -> historyScrollState
+                                    Screens.Admin -> adminScrollState
+                                    Screens.Players -> null
+                                    else -> error("Only top-level screens can be animated as tabs")
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .then(
+                                            scrollState?.let { Modifier.verticalScroll(it) } ?: Modifier
+                                        )
+                                ) {
+                                    NavDisplay(
+                                        backStack = navigation.backStackFor(topLevelScreen),
+                                        onBack = navigation::navigateBack,
+                                        entryProvider = entryProvider {
                                 entry<Screens.Home> {
                                     HomeScreen(
                                         viewModel = homeViewModel,
@@ -360,6 +371,7 @@ fun App(
                             }
 
                         )
+                                }
                         }
                     }
                 }
