@@ -1,6 +1,7 @@
 package com.brokechango.hattitriki.feature.matchdetail
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
+import com.brokechango.hattitriki.core.design.CrestRed
 import com.brokechango.hattitriki.core.model.GoalEntry
 import com.brokechango.hattitriki.core.model.TeamSide
 import com.brokechango.hattitriki.ui.composables.FootballCard
@@ -188,6 +191,7 @@ private fun GoalRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(if (goal.isOwnGoal) CrestRed.copy(alpha = 0.30f) else Color.Transparent)
             .height(42.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -201,14 +205,16 @@ private fun GoalRow(
         } else {
             GoalkeeperWhoConceded(
                 name = goalkeeperWhoConceded,
+                isOwnGoal = goal.isOwnGoal,
                 alignment = TextAlign.End,
                 modifier = Modifier.weight(1f)
             )
         }
-        GoalMarker()
+        GoalMarker(isOwnGoal = goal.isOwnGoal)
         if (teamAScored) {
             GoalkeeperWhoConceded(
                 name = goalkeeperWhoConceded,
+                isOwnGoal = goal.isOwnGoal,
                 alignment = TextAlign.Start,
                 modifier = Modifier.weight(1f)
             )
@@ -242,6 +248,7 @@ private fun GoalPlayer(
 @Composable
 private fun GoalkeeperWhoConceded(
     name: String,
+    isOwnGoal: Boolean,
     alignment: TextAlign,
     modifier: Modifier = Modifier
 ) {
@@ -261,9 +268,15 @@ private fun GoalkeeperWhoConceded(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            GoalkeeperGlove(modifier = Modifier.padding(start = 6.dp))
+            GoalkeeperGlove(
+                color = if (isOwnGoal) CrestRed else CrestGold,
+                modifier = Modifier.padding(start = 6.dp)
+            )
         } else {
-            GoalkeeperGlove(modifier = Modifier.padding(end = 6.dp))
+            GoalkeeperGlove(
+                color = if (isOwnGoal) CrestRed else CrestGold,
+                modifier = Modifier.padding(end = 6.dp)
+            )
             Text(
                 text = name,
                 style = MaterialTheme.typography.bodyMedium,
@@ -274,7 +287,7 @@ private fun GoalkeeperWhoConceded(
 }
 
 @Composable
-private fun GoalMarker() {
+private fun GoalMarker(isOwnGoal: Boolean) {
     Box(
         modifier = Modifier
             .height(42.dp)
@@ -289,9 +302,10 @@ private fun GoalMarker() {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "⚽",
+            text = if (isOwnGoal) "O.G" else "⚽",
             style = MaterialTheme.typography.labelMedium,
-            color = CrestGold
+            color = if (isOwnGoal) CrestRed else CrestGold,
+            fontWeight = FontWeight.Bold
         )
     }
 }
@@ -339,7 +353,10 @@ private fun PlayerLine(name: String, isGoalkeeper: Boolean) {
 }
 
 @Composable
-private fun GoalkeeperGlove(modifier: Modifier = Modifier) {
+private fun GoalkeeperGlove(
+    color: Color = CrestGold,
+    modifier: Modifier = Modifier
+) {
     Canvas(
         modifier = modifier
             .size(18.dp)
@@ -352,26 +369,26 @@ private fun GoalkeeperGlove(modifier: Modifier = Modifier) {
 
         listOf(0.18f, 0.37f, 0.56f).forEach { x ->
             drawRoundRect(
-                color = CrestGold,
+                color = color,
                 topLeft = Offset(size.width * x, fingerTop),
                 size = Size(fingerWidth, fingerHeight),
                 cornerRadius = corner
             )
         }
         drawRoundRect(
-            color = CrestGold,
+            color = color,
             topLeft = Offset(size.width * 0.18f, size.height * 0.37f),
             size = Size(size.width * 0.58f, size.height * 0.39f),
             cornerRadius = CornerRadius(size.width * 0.12f, size.width * 0.12f)
         )
         drawRoundRect(
-            color = CrestGold,
+            color = color,
             topLeft = Offset(size.width * 0.30f, size.height * 0.76f),
             size = Size(size.width * 0.42f, size.height * 0.18f),
             cornerRadius = CornerRadius(size.width * 0.05f, size.width * 0.05f)
         )
         drawRoundRect(
-            color = CrestGold,
+            color = color,
             topLeft = Offset(size.width * 0.05f, size.height * 0.42f),
             size = Size(size.width * 0.24f, size.height * 0.19f),
             cornerRadius = CornerRadius(size.width * 0.08f, size.width * 0.08f)
