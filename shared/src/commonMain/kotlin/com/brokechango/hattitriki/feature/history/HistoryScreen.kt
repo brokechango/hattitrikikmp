@@ -1,11 +1,13 @@
 package com.brokechango.hattitriki.feature.history
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -15,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.HattitrikiPullToRefresh
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
@@ -23,12 +26,18 @@ import com.brokechango.hattitriki.ui.composables.ScreenTitle
 fun HistoryScreen(
     viewModel: HistoryViewModel,
     onEvent: (HistoryEvent) -> Unit,
+    scrollState: ScrollState,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    HattitrikiPullToRefresh(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = viewModel::refresh,
+        modifier = modifier
+    ) {
     Column(
-        modifier = modifier,
+        modifier = Modifier.verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         ScreenTitle(
@@ -105,5 +114,6 @@ fun HistoryScreen(
                 }
             }
         }
+    }
     }
 }

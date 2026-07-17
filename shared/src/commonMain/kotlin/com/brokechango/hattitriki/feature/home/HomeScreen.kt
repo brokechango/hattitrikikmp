@@ -2,6 +2,7 @@ package com.brokechango.hattitriki.feature.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -34,6 +36,7 @@ import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestGoldLight
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.ui.composables.FootballCard
+import com.brokechango.hattitriki.ui.composables.HattitrikiPullToRefresh
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
@@ -42,12 +45,18 @@ import com.brokechango.hattitriki.ui.composables.ScreenTitle
 fun HomeScreen(
     viewModel: HomeViewModel,
     onEvent: (HomeEvent) -> Unit,
+    scrollState: ScrollState,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
+    HattitrikiPullToRefresh(
+        isRefreshing = uiState.isRefreshing,
+        onRefresh = viewModel::refresh,
+        modifier = modifier
+    ) {
     Column(
-        modifier = modifier,
+        modifier = Modifier.verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ScreenTitle(
@@ -143,6 +152,7 @@ fun HomeScreen(
             stats = uiState.featuredStats,
             onOpenRanking = { category -> onEvent(HomeEvent.OpenPlayers(category)) }
         )
+    }
     }
 }
 

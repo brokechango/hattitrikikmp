@@ -25,7 +25,20 @@ class HomeViewModel(
         loadLeague()
     }
 
-    private fun loadLeague() = viewModelScope.launch {
+    fun refresh() {
+        if (!_uiState.value.isRefreshing) {
+            loadLeague(isRefreshing = true)
+        }
+    }
+
+    private fun loadLeague(isRefreshing: Boolean = false) = viewModelScope.launch {
+        if (isRefreshing) {
+            _uiState.value = _uiState.value.copy(
+                isRefreshing = true,
+                errorMessage = null
+            )
+        }
+
         val leagueRepository = repository
         if (leagueRepository == null) {
             _uiState.value = HomeUiState(
@@ -37,8 +50,9 @@ class HomeViewModel(
 
         when (val result = leagueRepository.loadSnapshot()) {
             is FootballSnapshotResult.Success -> updateFromSnapshot(result.snapshot)
-            is FootballSnapshotResult.Failure -> _uiState.value = HomeUiState(
+            is FootballSnapshotResult.Failure -> _uiState.value = _uiState.value.copy(
                 isLoading = false,
+                isRefreshing = false,
                 errorMessage = result.message
             )
         }
@@ -51,7 +65,8 @@ class HomeViewModel(
             totalMatches = snapshot.matches.size,
             totalGoals = snapshot.matches.sumOf { it.teamAScore + it.teamBScore },
             featuredStats = buildFeaturedStats(snapshot.matches, stats),
-            isLoading = false
+            isLoading = false,
+            isRefreshing = false
         )
     }
 

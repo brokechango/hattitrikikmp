@@ -9,6 +9,7 @@ data class HomeUiState(
     val totalGoals: Int = 0,
     val featuredStats: List<HomeFeaturedStat> = emptyList(),
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null
 )
 

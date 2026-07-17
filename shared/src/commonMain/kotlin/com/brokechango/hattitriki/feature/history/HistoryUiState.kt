@@ -5,5 +5,6 @@ import com.brokechango.hattitriki.core.model.FriendlyMatch
 data class HistoryUiState(
     val matches: List<FriendlyMatch> = emptyList(),
     val isLoading: Boolean = true,
+    val isRefreshing: Boolean = false,
     val errorMessage: String? = null
 )

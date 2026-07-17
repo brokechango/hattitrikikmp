@@ -16,26 +16,42 @@ class HistoryViewModel(
     val uiState: StateFlow<HistoryUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            val leagueRepository = repository
-            if (leagueRepository == null) {
-                _uiState.value = HistoryUiState(
-                    isLoading = false,
-                    errorMessage = "Falta la configuración local de Supabase en este dispositivo."
-                )
-                return@launch
-            }
+        loadHistory()
+    }
 
-            _uiState.value = when (val result = leagueRepository.loadSnapshot()) {
-                is FootballSnapshotResult.Success -> HistoryUiState(
-                    matches = result.snapshot.matches,
-                    isLoading = false
-                )
-                is FootballSnapshotResult.Failure -> HistoryUiState(
-                    isLoading = false,
-                    errorMessage = result.message
-                )
-            }
+    fun refresh() {
+        if (!_uiState.value.isRefreshing) {
+            loadHistory(isRefreshing = true)
+        }
+    }
+
+    private fun loadHistory(isRefreshing: Boolean = false) = viewModelScope.launch {
+        if (isRefreshing) {
+            _uiState.value = _uiState.value.copy(
+                isRefreshing = true,
+                errorMessage = null
+            )
+        }
+
+        val leagueRepository = repository
+        if (leagueRepository == null) {
+            _uiState.value = HistoryUiState(
+                isLoading = false,
+                errorMessage = "Falta la configuración local de Supabase en este dispositivo."
+            )
+            return@launch
+        }
+
+        _uiState.value = when (val result = leagueRepository.loadSnapshot()) {
+            is FootballSnapshotResult.Success -> HistoryUiState(
+                matches = result.snapshot.matches,
+                isLoading = false
+            )
+            is FootballSnapshotResult.Failure -> _uiState.value.copy(
+                isLoading = false,
+                isRefreshing = false,
+                errorMessage = result.message
+            )
         }
     }
 }

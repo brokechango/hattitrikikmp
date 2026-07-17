@@ -162,8 +162,7 @@ fun App(
                                 label = "Bottom navigation transition"
                             ) { topLevelScreen ->
                                 val scrollState = when (topLevelScreen) {
-                                    Screens.Home -> homeScrollState
-                                    Screens.History -> historyScrollState
+                                    Screens.Home, Screens.History -> null
                                     Screens.Admin -> adminScrollState
                                     Screens.Players -> null
                                     else -> error("Only top-level screens can be animated as tabs")
@@ -183,6 +182,7 @@ fun App(
                                 entry<Screens.Home> {
                                     HomeScreen(
                                         viewModel = homeViewModel,
+                                        scrollState = homeScrollState,
                                         onEvent = { event ->
                                             when (event) {
                                                 HomeEvent.OpenAdmin -> navigation.navigate(Screens.Admin)
@@ -202,6 +202,7 @@ fun App(
                                 entry<Screens.History> {
                                     HistoryScreen(
                                         viewModel = historyViewModel,
+                                        scrollState = historyScrollState,
                                         onEvent = { event ->
                                             when (event) {
                                                 is HistoryEvent.OpenMatch -> navigation.navigate(
