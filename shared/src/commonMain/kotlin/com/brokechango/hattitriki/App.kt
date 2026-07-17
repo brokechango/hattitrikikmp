@@ -59,6 +59,7 @@ import com.brokechango.hattitriki.feature.history.HistoryViewModel
 import com.brokechango.hattitriki.feature.home.HomeEvent
 import com.brokechango.hattitriki.feature.home.HomeScreen
 import com.brokechango.hattitriki.feature.home.HomeViewModel
+import com.brokechango.hattitriki.feature.home.MultiplatformSettingsHomeStatsOrderStore
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailEvent
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailScreen
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailViewModel
@@ -97,7 +98,12 @@ fun App(
         val footballRepository = remember(adminAuthRepository) {
             adminAuthRepository?.let { SupabaseFriendlyFootballRepository(it.client) }
         }
-        val homeViewModel = remember(footballRepository) { HomeViewModel(footballRepository) }
+        val homeStatsOrderStore = remember {
+            MultiplatformSettingsHomeStatsOrderStore(settings)
+        }
+        val homeViewModel = remember(footballRepository, homeStatsOrderStore) {
+            HomeViewModel(footballRepository, homeStatsOrderStore)
+        }
         val historyViewModel = remember(footballRepository) { HistoryViewModel(footballRepository) }
         val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
         val adminViewModel = remember(adminAuthRepository) { AdminViewModel(adminAuthRepository) }

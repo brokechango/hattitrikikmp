@@ -16,10 +16,14 @@ import kotlinx.coroutines.launch
 import kotlin.math.round
 
 class HomeViewModel(
-    private val repository: FriendlyFootballRepository?
+    private val repository: FriendlyFootballRepository?,
+    private val statsOrderStore: HomeStatsOrderStore = NoOpHomeStatsOrderStore
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private var featuredStatsOrder = normalizeHomeStatsOrder(
+        runCatching(statsOrderStore::loadOrder).getOrDefault(emptyList())
+    )
 
     init {
         loadLeague()
@@ -29,6 +33,20 @@ class HomeViewModel(
         if (!_uiState.value.isRefreshing) {
             loadLeague(isRefreshing = true)
         }
+    }
+
+    fun updateFeaturedStatsOrder(visibleOrder: List<PlayerRankingCategory>) {
+        featuredStatsOrder = mergeVisibleHomeStatsOrder(
+            currentOrder = featuredStatsOrder,
+            visibleOrder = visibleOrder
+        )
+        runCatching { statsOrderStore.saveOrder(featuredStatsOrder) }
+
+        _uiState.value = _uiState.value.copy(
+            featuredStats = _uiState.value.featuredStats.sortedBy { stat ->
+                featuredStatsOrder.indexOf(stat.category)
+            }
+        )
     }
 
     private fun loadLeague(isRefreshing: Boolean = false) = viewModelScope.launch {
@@ -64,7 +82,9 @@ class HomeViewModel(
             latestMatch = snapshot.matches.firstOrNull(),
             totalMatches = snapshot.matches.size,
             totalGoals = snapshot.matches.sumOf { it.teamAScore + it.teamBScore },
-            featuredStats = buildFeaturedStats(snapshot.matches, stats),
+            featuredStats = buildFeaturedStats(snapshot.matches, stats).sortedBy { stat ->
+                featuredStatsOrder.indexOf(stat.category)
+            },
             isLoading = false,
             isRefreshing = false
         )
