@@ -13,8 +13,9 @@ import androidx.navigation3.runtime.rememberNavBackStack
 /**
  * Keeps an independent, saveable back stack for every bottom-navigation tab.
  *
- * Every tab keeps its own stack. The app shell decides how tabs animate; the
- * stack supplied to NavDisplay is reserved for navigation inside that tab.
+ * A tab is restored at its root whenever it is selected from bottom navigation.
+ * The app shell decides how tabs animate; the stack supplied to NavDisplay is
+ * reserved for navigation inside that tab.
  */
 @Composable
 fun rememberHattitrikiNavigationState(): HattitrikiNavigationState {
@@ -54,7 +55,9 @@ class HattitrikiNavigationState internal constructor(
         get() = activeBackStack.size > 1 || activeTab != HattitrikiTab.Home
 
     fun selectTopLevel(screen: Screens) {
-        selectedTab.value = HattitrikiTab.from(screen).name
+        val tab = HattitrikiTab.from(screen)
+        tabBackStacks.getValue(tab).retainRoot()
+        selectedTab.value = tab.name
     }
 
     fun navigate(screen: Screens) {
@@ -93,6 +96,11 @@ class HattitrikiNavigationState internal constructor(
     private val activeBackStack: MutableList<NavKey>
         get() = checkNotNull(tabBackStacks[activeTab])
 
+    private fun MutableList<NavKey>.retainRoot() {
+        while (size > 1) {
+            removeAt(lastIndex)
+        }
+    }
 }
 
 internal enum class HattitrikiTab(val screen: Screens) {

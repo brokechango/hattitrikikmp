@@ -41,6 +41,20 @@ class HattitrikiNavigationStateTest {
         assertEquals(listOf(Screens.Home, Screens.History), navigation.backStackFor(Screens.History))
     }
 
+    @Test
+    fun `selecting a tab returns to its root instead of restoring its detail`() {
+        val navigation = navigationState()
+
+        navigation.selectTopLevel(Screens.History)
+        navigation.navigate(Screens.MatchDetail("match-42"))
+        navigation.selectTopLevel(Screens.Players)
+
+        navigation.selectTopLevel(Screens.History)
+
+        assertEquals(Screens.History, navigation.currentScreen)
+        assertEquals(listOf(Screens.Home, Screens.History), navigation.backStackFor(Screens.History))
+    }
+
     private fun navigationState(): HattitrikiNavigationState = HattitrikiNavigationState(
         selectedTab = mutableStateOf(HattitrikiTab.Home.name),
         tabBackStacks = mapOf(
