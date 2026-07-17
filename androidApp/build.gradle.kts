@@ -57,7 +57,7 @@ android {
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHH")).toInt()
-        versionName = "0.0.2"
+        versionName = "0.1.0"
         buildConfigField("String", "SUPABASE_URL", localProperty("SUPABASE_URL").asBuildConfigString())
         buildConfigField(
             "String",
