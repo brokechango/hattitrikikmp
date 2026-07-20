@@ -23,7 +23,7 @@ sealed interface Screens : NavKey {
     data object Admin : Screens
 
     @Serializable
-    data object NewMatch : Screens
+    data class NewMatch(val openTime: Long) : Screens
 
     @Serializable
     data object NewPlayer : Screens

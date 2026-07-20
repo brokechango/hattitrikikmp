@@ -38,6 +38,34 @@ fun TeamRandomizerScreen(
             subtitle = "Añade los participantes, elige los equipos y crea un reparto equilibrado."
         )
 
+        uiState.savedDraft?.let { draft ->
+            FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        "Borrador de partido guardado",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        "${draft.teamAPlayerIds.size} jugadores en el Equipo A · " +
+                            "${draft.teamBPlayerIds.size} en el Equipo B. " +
+                            "Se cargarán automáticamente al crear un partido.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    OutlinedButton(
+                        onClick = { viewModel.onEvent(TeamRandomizerEvent.ClearDraft) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Descartar borrador")
+                    }
+                }
+            }
+        }
+
         FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -179,6 +207,52 @@ fun TeamRandomizerScreen(
                         team.players.forEach { player ->
                             Text("• ${player.name}")
                         }
+                    }
+                }
+            }
+
+            FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    val saveDraftRequirement = uiState.saveDraftRequirement
+                    Text(
+                        "Preparar el próximo partido",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        when {
+                            uiState.isCurrentResultSaved ->
+                                "✓ Estos equipos ya están guardados y se cargarán en Nuevo partido."
+                            saveDraftRequirement != null ->
+                                saveDraftRequirement
+                            else ->
+                                "Guarda el Equipo 1 como Equipo A y el Equipo 2 como Equipo B."
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Button(
+                        onClick = { viewModel.onEvent(TeamRandomizerEvent.SaveDraft) },
+                        enabled = uiState.canSaveDraft && !uiState.isCurrentResultSaved,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (uiState.isCurrentResultSaved) {
+                                "Borrador guardado"
+                            } else {
+                                "Guardar equipos como borrador"
+                            }
+                        )
+                    }
+                    uiState.draftMessage?.let { message ->
+                        Text(
+                            message,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }

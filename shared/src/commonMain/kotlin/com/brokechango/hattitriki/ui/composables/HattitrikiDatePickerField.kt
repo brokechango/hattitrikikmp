@@ -100,7 +100,9 @@ internal fun isoDateToUtcMillis(value: String): Long? {
 
 internal fun utcMillisToIsoDate(millis: Long): String {
     val (year, month, day) = civilFromDays(floorDiv(millis, MILLIS_PER_DAY))
-    return "%04d-%02d-%02d".format(year, month, day)
+    return "${year.toString().padStart(4, '0')}-" +
+        "${month.toString().padStart(2, '0')}-" +
+        day.toString().padStart(2, '0')
 }
 
 private const val MILLIS_PER_DAY = 86_400_000L

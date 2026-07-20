@@ -7,6 +7,8 @@ sealed interface TeamRandomizerEvent {
     data object UseActiveRoster : TeamRandomizerEvent
     data object ToggleStatsBalance : TeamRandomizerEvent
     data object ReloadRoster : TeamRandomizerEvent
+    data object SaveDraft : TeamRandomizerEvent
+    data object ClearDraft : TeamRandomizerEvent
     data object LoadExample : TeamRandomizerEvent
     data object Clear : TeamRandomizerEvent
 }

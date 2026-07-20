@@ -45,6 +45,7 @@ import com.brokechango.hattitriki.core.design.CrestWhite
 import com.brokechango.hattitriki.core.auth.AdminAuthRepository
 import com.brokechango.hattitriki.core.data.AdminMatchRepository
 import com.brokechango.hattitriki.core.data.AdminPlayerRepository
+import com.brokechango.hattitriki.core.data.MultiplatformSettingsMatchTeamsDraftStore
 import com.brokechango.hattitriki.core.data.SupabaseFriendlyFootballRepository
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
@@ -100,6 +101,9 @@ fun App(
         }
         val homeStatsOrderStore = remember {
             MultiplatformSettingsHomeStatsOrderStore(settings)
+        }
+        val matchTeamsDraftStore = remember {
+            MultiplatformSettingsMatchTeamsDraftStore(settings)
         }
         val homeViewModel = remember(footballRepository, homeStatsOrderStore) {
             HomeViewModel(footballRepository, homeStatsOrderStore)
@@ -241,7 +245,14 @@ fun App(
                                     AdminScreen(
                                         viewModel = adminViewModel,
                                         appVersion = appVersion,
-                                        onNewMatch = { navigation.navigate(Screens.NewMatch) },
+                                        onNewMatch = {
+                                            navigation.navigate(
+                                                Screens.NewMatch(
+                                                    openTime = kotlin.time.Clock.System.now()
+                                                        .toEpochMilliseconds()
+                                                )
+                                            )
+                                        },
                                         onAddPlayer = { navigation.navigate(Screens.NewPlayer) },
                                         onManageMatches = { navigation.navigate(Screens.ManageMatches) },
                                         onManagePlayers = { navigation.navigate(Screens.ManagePlayers) },
@@ -249,12 +260,13 @@ fun App(
                                     )
                                 }
 
-                                entry<Screens.NewMatch> {
-                                    val newMatchViewModel = remember(adminAuthRepository) {
+                                entry<Screens.NewMatch> { screen ->
+                                    val newMatchViewModel = remember(adminAuthRepository, screen.openTime) {
                                         NewMatchViewModel(
                                             adminAuthRepository?.let { repository ->
                                                 AdminMatchRepository(repository.client, repository)
-                                            }
+                                            },
+                                            matchTeamsDraftStore = matchTeamsDraftStore
                                         )
                                     }
                                     NewMatchScreen(
@@ -311,7 +323,8 @@ fun App(
                                             adminPlayerRepository = adminAuthRepository?.let { repository ->
                                                 AdminPlayerRepository(repository.client, repository)
                                             },
-                                            footballRepository = footballRepository
+                                            footballRepository = footballRepository,
+                                            matchTeamsDraftStore = matchTeamsDraftStore
                                         )
                                     }
                                     TeamRandomizerScreen(viewModel = teamRandomizerViewModel)
@@ -468,7 +481,7 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
     Screens.History -> "Marcador historico"
     Screens.Players -> "Clasificaciones"
     Screens.Admin -> "Zona mister"
-    Screens.NewMatch -> "Nuevo partido"
+    is Screens.NewMatch -> "Nuevo partido"
     Screens.NewPlayer -> "Añadir jugador"
     Screens.ManageMatches -> "Gestionar partidos"
     Screens.ManagePlayers -> "Gestionar jugadores"

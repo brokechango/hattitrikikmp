@@ -11,6 +11,8 @@ import com.brokechango.hattitriki.core.data.EditMatchResult
 import com.brokechango.hattitriki.core.data.LoadMatchResult
 import com.brokechango.hattitriki.core.data.LoadPlayersResult
 import com.brokechango.hattitriki.core.data.MatchReportDraft
+import com.brokechango.hattitriki.core.data.MatchTeamsDraftStore
+import com.brokechango.hattitriki.core.data.NoOpMatchTeamsDraftStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,7 +20,8 @@ import kotlinx.coroutines.launch
 
 class NewMatchViewModel(
     private val repository: AdminMatchRepository?,
-    private val matchId: String? = null
+    private val matchId: String? = null,
+    private val matchTeamsDraftStore: MatchTeamsDraftStore = NoOpMatchTeamsDraftStore
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(NewMatchUiState(editingMatchId = matchId))
     val uiState: StateFlow<NewMatchUiState> = _uiState.asStateFlow()
@@ -40,6 +43,7 @@ class NewMatchViewModel(
             is NewMatchEvent.GoalkeeperToggled -> toggleGoalkeeper(event.team, event.playerId)
             is NewMatchEvent.GoalAdded -> addGoal(event.goal)
             is NewMatchEvent.GoalRemoved -> removeGoal(event.goal)
+            NewMatchEvent.DiscardTeamsDraft -> discardTeamsDraft()
             NewMatchEvent.Submit -> save()
         }
     }
@@ -66,10 +70,17 @@ class NewMatchViewModel(
                 isAdmin = true
             )
             when (val result = matchRepository.loadActivePlayers()) {
-                is LoadPlayersResult.Success -> _uiState.value = _uiState.value.copy(
-                    players = result.players,
-                    isLoadingPlayers = false
-                ).also { if (matchId != null) loadExistingMatch(matchId) }
+                is LoadPlayersResult.Success -> {
+                    val loadedState = _uiState.value.copy(
+                        players = result.players,
+                        isLoadingPlayers = false
+                    )
+                    _uiState.value = if (matchId == null) {
+                        applySavedTeamsDraft(loadedState)
+                    } else {
+                        loadedState.also { loadExistingMatch(matchId) }
+                    }
+                }
                 LoadPlayersResult.Unauthorized -> _uiState.value = _uiState.value.copy(
                     isLoadingPlayers = false,
                     isAdmin = false,
@@ -81,6 +92,30 @@ class NewMatchViewModel(
                 )
             }
         }
+    }
+
+    private fun applySavedTeamsDraft(state: NewMatchUiState): NewMatchUiState {
+        val draft = runCatching { matchTeamsDraftStore.load() }.getOrNull() ?: return state
+        val activePlayerIds = state.players.map { it.id }.toSet()
+        val teamAPlayerIds = draft.teamAPlayerIds.filter(activePlayerIds::contains).distinct()
+        val teamBPlayerIds = draft.teamBPlayerIds.filter(activePlayerIds::contains).distinct()
+        val missingPlayers = draft.teamAPlayerIds.size + draft.teamBPlayerIds.size -
+            teamAPlayerIds.size - teamBPlayerIds.size
+
+        return state.copy(
+            teamAPlayerIds = teamAPlayerIds,
+            teamBPlayerIds = teamBPlayerIds,
+            teamsDraftMessage = if (missingPlayers == 0) {
+                "Se han cargado los equipos guardados en el generador."
+            } else {
+                "Se ha cargado el borrador, pero $missingPlayers jugador" +
+                    if (missingPlayers == 1) {
+                        " ya no está activo. Revisa los equipos."
+                    } else {
+                        "es ya no están activos. Revisa los equipos."
+                    }
+            }
+        )
     }
 
     private fun loadExistingMatch(id: String) {
@@ -253,6 +288,27 @@ class NewMatchViewModel(
         _uiState.value = _uiState.value.copy(goalEntries = _uiState.value.goalEntries - goal)
     }
 
+    private fun discardTeamsDraft() {
+        val state = _uiState.value
+        runCatching { matchTeamsDraftStore.clear() }
+            .onSuccess {
+                _uiState.value = state.copy(
+                    teamAPlayerIds = emptyList(),
+                    teamBPlayerIds = emptyList(),
+                    goalkeeperAIds = emptyList(),
+                    goalkeeperBIds = emptyList(),
+                    goalEntries = emptyList(),
+                    teamsDraftMessage = null,
+                    errorMessage = null
+                )
+            }
+            .onFailure { error ->
+                _uiState.value = state.copy(
+                    errorMessage = error.message ?: "No se ha podido descartar el borrador."
+                )
+            }
+    }
+
     private fun save() {
         val state = _uiState.value
         val matchRepository = repository ?: return
@@ -288,12 +344,17 @@ class NewMatchViewModel(
                     CreateMatchResult.Success -> EditMatchResult.Success
                     CreateMatchResult.Unauthorized -> EditMatchResult.Unauthorized
                     is CreateMatchResult.Failure -> EditMatchResult.Failure(createResult.message)
-                }
+            }
             when (result) {
-                EditMatchResult.Success -> _uiState.value = _uiState.value.copy(
-                    isSaving = false,
-                    isSaved = true
-                )
+                EditMatchResult.Success -> {
+                    if (state.editingMatchId == null) {
+                        runCatching { matchTeamsDraftStore.clear() }
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        isSaving = false,
+                        isSaved = true
+                    )
+                }
                 EditMatchResult.Unauthorized -> _uiState.value = _uiState.value.copy(
                     isSaving = false,
                     isAdmin = false,

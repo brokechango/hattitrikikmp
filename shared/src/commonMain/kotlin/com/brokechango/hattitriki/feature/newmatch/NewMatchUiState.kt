@@ -28,6 +28,7 @@ data class NewMatchUiState(
     val goalkeeperAIds: List<String> = emptyList(),
     val goalkeeperBIds: List<String> = emptyList(),
     val goalEntries: List<GoalDraft> = emptyList(),
+    val teamsDraftMessage: String? = null,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val errorMessage: String? = null
@@ -43,9 +44,19 @@ data class NewMatchUiState(
         ActaTeam.B -> playerId in teamBPlayerIds
     }
 
+    fun playerIdsFor(team: ActaTeam): List<String> = when (team) {
+        ActaTeam.A -> teamAPlayerIds
+        ActaTeam.B -> teamBPlayerIds
+    }
+
     fun goalkeeperIdsFor(team: ActaTeam): List<String> = when (team) {
         ActaTeam.A -> goalkeeperAIds
         ActaTeam.B -> goalkeeperBIds
+    }
+
+    fun scoreFor(team: ActaTeam): Int? = when (team) {
+        ActaTeam.A -> teamAScore.toNonNegativeIntOrNull()
+        ActaTeam.B -> teamBScore.toNonNegativeIntOrNull()
     }
 
     val isRegularScoreDraw: Boolean
@@ -61,17 +72,27 @@ data class NewMatchUiState(
                 teamAPenalties != teamBPenalties
         }
 
-    val canSubmit: Boolean
-        get() = isAdmin && !isSaving && isValidDate(date) &&
-            teamAScore.toNonNegativeIntOrNull() != null &&
-            teamBScore.toNonNegativeIntOrNull() != null &&
-            hasValidPenaltyShootout &&
-            teamAPlayerIds.isNotEmpty() && teamBPlayerIds.isNotEmpty() &&
+    val hasValidMatchBasics: Boolean
+        get() = isValidDate(date) &&
+            scoreFor(ActaTeam.A) != null &&
+            scoreFor(ActaTeam.B) != null &&
+            hasValidPenaltyShootout
+
+    val hasValidTeams: Boolean
+        get() = teamAPlayerIds.isNotEmpty() && teamBPlayerIds.isNotEmpty() &&
             goalkeeperAIds.any { it in teamAPlayerIds } &&
-            goalkeeperBIds.any { it in teamBPlayerIds } &&
-            goalEntries.all(::isValidGoal) &&
-            goalsFor(ActaTeam.A) == teamAScore.toInt() &&
-            goalsFor(ActaTeam.B) == teamBScore.toInt()
+            goalkeeperBIds.any { it in teamBPlayerIds }
+
+    val hasValidGoals: Boolean
+        get() = goalEntries.all(::isValidGoal) &&
+            goalsFor(ActaTeam.A) == scoreFor(ActaTeam.A) &&
+            goalsFor(ActaTeam.B) == scoreFor(ActaTeam.B)
+
+    val canSubmit: Boolean
+        get() = isAdmin && !isSaving &&
+            hasValidMatchBasics &&
+            hasValidTeams &&
+            hasValidGoals
 
     fun goalsFor(team: ActaTeam): Int = goalEntries
         .filter { it.team == team }

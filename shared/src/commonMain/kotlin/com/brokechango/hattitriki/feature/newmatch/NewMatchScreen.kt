@@ -1,12 +1,22 @@
 package com.brokechango.hattitriki.feature.newmatch
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -17,7 +27,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -29,6 +41,12 @@ import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.HattitrikiDatePickerField
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 
+private enum class MatchCreationStep(val label: String) {
+    MATCH("Partido"),
+    TEAMS("Equipos"),
+    GOALS("Goles")
+}
+
 @Composable
 fun NewMatchScreen(
     viewModel: NewMatchViewModel,
@@ -36,6 +54,8 @@ fun NewMatchScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var currentStepName by rememberSaveable { mutableStateOf(MatchCreationStep.MATCH.name) }
+    val currentStep = MatchCreationStep.valueOf(currentStepName)
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) onSaved()
@@ -47,14 +67,23 @@ fun NewMatchScreen(
     ) {
         ScreenTitle(
             title = if (uiState.isEditing) "Editar acta" else "Nueva acta",
-            subtitle = if (uiState.isEditing) "Modifica el resultado, alineaciones, porteros y goleadores." else "Resultado, alineaciones, porteros y goleadores."
+            subtitle = if (uiState.isEditing) {
+                "Revisa el partido paso a paso y guarda los cambios."
+            } else {
+                "Completa partido, equipos y goles en tres pasos."
+            }
         )
 
         when {
             uiState.isCheckingAccess -> Text("Comprobando permisos…")
             !uiState.isAdmin -> AccessDenied(uiState.errorMessage)
             uiState.isLoadingPlayers -> Text("Cargando plantilla…")
-            else -> MatchReportForm(uiState, viewModel::onEvent)
+            else -> MatchReportFlow(
+                uiState = uiState,
+                currentStep = currentStep,
+                onStepSelected = { currentStepName = it.name },
+                onEvent = viewModel::onEvent
+            )
         }
     }
 }
@@ -73,31 +102,184 @@ private fun AccessDenied(errorMessage: String?) {
 }
 
 @Composable
-private fun MatchReportForm(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
-    MatchBasics(uiState, onEvent)
-    TeamAssignment(uiState, onEvent)
-    if (uiState.selectedPlayerIds.isNotEmpty()) {
-        GoalkeeperSelection(uiState, onEvent)
-        GoalSelection(uiState, onEvent)
-    }
+private fun MatchReportFlow(
+    uiState: NewMatchUiState,
+    currentStep: MatchCreationStep,
+    onStepSelected: (MatchCreationStep) -> Unit,
+    onEvent: (NewMatchEvent) -> Unit
+) {
+    var selectedLineupTeamName by rememberSaveable { mutableStateOf(ActaTeam.A.name) }
+    var selectedGoalsTeamName by rememberSaveable { mutableStateOf(ActaTeam.A.name) }
 
-    FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("No hace falta alinear a toda la plantilla. El total de goles debe coincidir con el marcador.")
-            uiState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
-                onClick = { onEvent(NewMatchEvent.Submit) },
-                enabled = uiState.canSubmit,
-                modifier = Modifier.fillMaxWidth()
+    uiState.teamsDraftMessage?.let { message ->
+        FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    when {
-                        uiState.isSaving && uiState.isEditing -> "Actualizando acta…"
-                        uiState.isSaving -> "Guardando acta…"
-                        uiState.isEditing -> "Guardar cambios"
-                        else -> "Guardar acta del partido"
-                    }
+                    "Borrador de equipos",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = CrestGold
                 )
+                Text(message, style = MaterialTheme.typography.bodySmall)
+                OutlinedButton(
+                    onClick = { onEvent(NewMatchEvent.DiscardTeamsDraft) },
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Descartar borrador y vaciar equipos")
+                }
+            }
+        }
+    }
+
+    MatchStepBreadcrumb(
+        currentStep = currentStep,
+        uiState = uiState,
+        onStepSelected = onStepSelected
+    )
+
+    AnimatedContent(
+        targetState = currentStep,
+        transitionSpec = {
+            val direction = if (targetState.ordinal > initialState.ordinal) 1 else -1
+            slideInHorizontally(
+                animationSpec = tween(220),
+                initialOffsetX = { direction * it / 3 }
+            ) togetherWith slideOutHorizontally(
+                animationSpec = tween(220),
+                targetOffsetX = { -direction * it / 3 }
+            )
+        },
+        modifier = Modifier.fillMaxWidth(),
+        label = "Paso de creación del partido"
+    ) { step ->
+        when (step) {
+            MatchCreationStep.MATCH -> MatchBasics(uiState, onEvent)
+            MatchCreationStep.TEAMS -> TeamAssignment(
+                uiState = uiState,
+                selectedTeam = ActaTeam.valueOf(selectedLineupTeamName),
+                onTeamSelected = { selectedLineupTeamName = it.name },
+                onEvent = onEvent
+            )
+            MatchCreationStep.GOALS -> GoalSelection(
+                uiState = uiState,
+                selectedTeam = ActaTeam.valueOf(selectedGoalsTeamName),
+                onTeamSelected = { selectedGoalsTeamName = it.name },
+                onEvent = onEvent
+            )
+        }
+    }
+
+    StepActions(
+        uiState = uiState,
+        currentStep = currentStep,
+        onBack = {
+            MatchCreationStep.entries.getOrNull(currentStep.ordinal - 1)?.let(onStepSelected)
+        },
+        onContinue = {
+            MatchCreationStep.entries.getOrNull(currentStep.ordinal + 1)?.let(onStepSelected)
+        },
+        onSubmit = { onEvent(NewMatchEvent.Submit) }
+    )
+}
+
+@Composable
+private fun MatchStepBreadcrumb(
+    currentStep: MatchCreationStep,
+    uiState: NewMatchUiState,
+    onStepSelected: (MatchCreationStep) -> Unit
+) {
+    FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                "Paso ${currentStep.ordinal + 1} de ${MatchCreationStep.entries.size}",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                MatchCreationStep.entries.forEachIndexed { index, step ->
+                    TextButton(
+                        onClick = { onStepSelected(step) },
+                        enabled = step == currentStep || uiState.canOpen(step),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        val prefix = when {
+                            step == currentStep -> "${index + 1}. "
+                            uiState.isComplete(step) -> "✓ "
+                            else -> ""
+                        }
+                        Text(prefix + step.label, maxLines = 1)
+                    }
+                    if (index < MatchCreationStep.entries.lastIndex) {
+                        Text("›", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepActions(
+    uiState: NewMatchUiState,
+    currentStep: MatchCreationStep,
+    onBack: () -> Unit,
+    onContinue: () -> Unit,
+    onSubmit: () -> Unit
+) {
+    val requirement = uiState.requirementFor(currentStep)
+
+    FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            requirement?.let {
+                Text(
+                    "Para continuar: $it",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            uiState.errorMessage?.let {
+                Text(it, color = MaterialTheme.colorScheme.error)
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                if (currentStep != MatchCreationStep.MATCH) {
+                    OutlinedButton(
+                        onClick = onBack,
+                        enabled = !uiState.isSaving,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Atrás")
+                    }
+                }
+                Button(
+                    onClick = if (currentStep == MatchCreationStep.GOALS) onSubmit else onContinue,
+                    enabled = requirement == null && !uiState.isSaving,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        when {
+                            uiState.isSaving && uiState.isEditing -> "Actualizando…"
+                            uiState.isSaving -> "Guardando…"
+                            currentStep != MatchCreationStep.GOALS -> "Continuar"
+                            uiState.isEditing -> "Guardar cambios"
+                            else -> "Guardar acta"
+                        }
+                    )
+                }
             }
         }
     }
@@ -105,9 +287,16 @@ private fun MatchReportForm(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -
 
 @Composable
 private fun MatchBasics(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
-    FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Datos del partido", style = MaterialTheme.typography.titleMedium, color = CrestGold)
+    FootballCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Partido", style = MaterialTheme.typography.titleMedium, color = CrestGold)
+            Text(
+                "Indica la fecha y el marcador final.",
+                style = MaterialTheme.typography.bodySmall
+            )
             HattitrikiDatePickerField(
                 value = uiState.date,
                 onDateSelected = { onEvent(NewMatchEvent.DateChanged(it)) },
@@ -118,7 +307,7 @@ private fun MatchBasics(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Un
                 OutlinedTextField(
                     value = uiState.teamAScore,
                     onValueChange = { onEvent(NewMatchEvent.TeamAScoreChanged(it)) },
-                    label = { Text("Goles equipo A") },
+                    label = { Text("Equipo A") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = !uiState.isSaving,
@@ -127,14 +316,16 @@ private fun MatchBasics(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Un
                 OutlinedTextField(
                     value = uiState.teamBScore,
                     onValueChange = { onEvent(NewMatchEvent.TeamBScoreChanged(it)) },
-                    label = { Text("Goles equipo B") },
+                    label = { Text("Equipo B") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = !uiState.isSaving,
                     modifier = Modifier.weight(1f)
                 )
             }
-            PenaltyShootoutFields(uiState, onEvent)
+            if (uiState.isRegularScoreDraw) {
+                PenaltyShootoutFields(uiState, onEvent)
+            }
         }
     }
 }
@@ -143,13 +334,10 @@ private fun MatchBasics(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Un
 private fun PenaltyShootoutFields(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
     OutlinedButton(
         onClick = { onEvent(NewMatchEvent.PenaltyShootoutToggled) },
-        enabled = !uiState.isSaving && uiState.isRegularScoreDraw,
+        enabled = !uiState.isSaving,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(if (uiState.isPenaltyShootout) "✓ Decidido en penaltis" else "¿Se decidió en penaltis?")
-    }
-    if (!uiState.isRegularScoreDraw) {
-        Text("La tanda solo está disponible cuando el partido termina empatado.", style = MaterialTheme.typography.bodySmall)
     }
     if (uiState.isPenaltyShootout) {
         Text("Resultado de la tanda", style = MaterialTheme.typography.labelLarge, color = CrestGold)
@@ -157,7 +345,7 @@ private fun PenaltyShootoutFields(uiState: NewMatchUiState, onEvent: (NewMatchEv
             OutlinedTextField(
                 value = uiState.teamAPenaltyScore,
                 onValueChange = { onEvent(NewMatchEvent.TeamAPenaltyScoreChanged(it)) },
-                label = { Text("Penaltis A") },
+                label = { Text("Equipo A") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 enabled = !uiState.isSaving,
@@ -166,28 +354,48 @@ private fun PenaltyShootoutFields(uiState: NewMatchUiState, onEvent: (NewMatchEv
             OutlinedTextField(
                 value = uiState.teamBPenaltyScore,
                 onValueChange = { onEvent(NewMatchEvent.TeamBPenaltyScoreChanged(it)) },
-                label = { Text("Penaltis B") },
+                label = { Text("Equipo B") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 enabled = !uiState.isSaving,
                 modifier = Modifier.weight(1f)
             )
         }
-        Text("La tanda debe tener un ganador y no cuenta como goles del partido.", style = MaterialTheme.typography.bodySmall)
+        Text(
+            "La tanda debe tener un ganador y no suma goles al marcador.",
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 
 @Composable
-private fun TeamAssignment(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
+private fun TeamAssignment(
+    uiState: NewMatchUiState,
+    selectedTeam: ActaTeam,
+    onTeamSelected: (ActaTeam) -> Unit,
+    onEvent: (NewMatchEvent) -> Unit
+) {
     FootballCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text("Alineaciones", style = MaterialTheme.typography.titleMedium, color = CrestGold)
-            Text("A y B son independientes: un jugador puede participar en los dos equipos. Por defecto, todos están fuera.")
+            Text("Equipos y porteros", style = MaterialTheme.typography.titleMedium, color = CrestGold)
             Text(
-                "Equipo A: ${uiState.teamAPlayerIds.size} · Equipo B: ${uiState.teamBPlayerIds.size} · Fuera: ${uiState.players.size - uiState.selectedPlayerIds.size}",
+                "Selecciona los jugadores de cada equipo. Un jugador puede participar en ambos.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            TeamTabs(
+                selectedTeam = selectedTeam,
+                labelFor = { team ->
+                    val playerCount = uiState.playerIdsFor(team).size
+                    "Equipo ${team.name} · $playerCount"
+                },
+                onTeamSelected = onTeamSelected,
+                enabled = !uiState.isSaving
+            )
+            Text(
+                "Marca como portero a uno o más jugadores del Equipo ${selectedTeam.name}.",
                 style = MaterialTheme.typography.labelLarge,
                 color = CrestGold
             )
@@ -195,13 +403,17 @@ private fun TeamAssignment(uiState: NewMatchUiState, onEvent: (NewMatchEvent) ->
                 Text("No hay jugadores en Supabase. Añádelos desde Zona míster.")
             } else {
                 uiState.players.forEach { player ->
-                    TeamAssignmentRow(
+                    TeamPlayerRow(
                         player = player,
-                        isInTeamA = uiState.isOnTeam(player.id, ActaTeam.A),
-                        isInTeamB = uiState.isOnTeam(player.id, ActaTeam.B),
+                        isSelected = uiState.isOnTeam(player.id, selectedTeam),
+                        isGoalkeeper = player.id in uiState.goalkeeperIdsFor(selectedTeam),
                         isSaving = uiState.isSaving,
-                        onTeamToggled = { team -> onEvent(NewMatchEvent.TeamToggled(player.id, team)) },
-                        onSetOutside = { onEvent(NewMatchEvent.PlayerSetOutside(player.id)) }
+                        onSelectedChanged = {
+                            onEvent(NewMatchEvent.TeamToggled(player.id, selectedTeam))
+                        },
+                        onGoalkeeperToggled = {
+                            onEvent(NewMatchEvent.GoalkeeperToggled(selectedTeam, player.id))
+                        }
                     )
                 }
             }
@@ -210,81 +422,96 @@ private fun TeamAssignment(uiState: NewMatchUiState, onEvent: (NewMatchEvent) ->
 }
 
 @Composable
-private fun TeamAssignmentRow(
+private fun TeamPlayerRow(
     player: AdminPlayer,
-    isInTeamA: Boolean,
-    isInTeamB: Boolean,
+    isSelected: Boolean,
+    isGoalkeeper: Boolean,
     isSaving: Boolean,
-    onTeamToggled: (ActaTeam) -> Unit,
-    onSetOutside: () -> Unit
+    onSelectedChanged: () -> Unit,
+    onGoalkeeperToggled: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Checkbox(
+            checked = isSelected,
+            onCheckedChange = { onSelectedChanged() },
+            enabled = !isSaving
+        )
         Text(player.name, modifier = Modifier.weight(1f))
-        TeamAssignmentButton("A", isInTeamA, isSaving) { onTeamToggled(ActaTeam.A) }
-        TeamAssignmentButton("B", isInTeamB, isSaving) { onTeamToggled(ActaTeam.B) }
-        TeamAssignmentButton("Fuera", !isInTeamA && !isInTeamB, isSaving, onSetOutside)
-    }
-}
-
-@Composable
-private fun TeamAssignmentButton(
-    label: String,
-    selected: Boolean,
-    isSaving: Boolean,
-    onClick: () -> Unit
-) {
-    if (selected) {
-        Button(onClick = onClick, enabled = !isSaving) { Text(label) }
-    } else {
-        OutlinedButton(onClick = onClick, enabled = !isSaving) { Text(label) }
-    }
-}
-
-@Composable
-private fun GoalkeeperSelection(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
-    FootballCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("¿Quién recibe los goles?", style = MaterialTheme.typography.titleMedium, color = CrestGold)
-            Text("Elige uno o más porteros por equipo. Cada gol se atribuye al portero rival que lo recibió.")
-            TeamRoster("Equipo A", uiState.teamAPlayerIds, uiState.players, uiState.goalkeeperAIds, ActaTeam.A, onEvent, uiState.isSaving)
-            TeamRoster("Equipo B", uiState.teamBPlayerIds, uiState.players, uiState.goalkeeperBIds, ActaTeam.B, onEvent, uiState.isSaving)
+        if (isSelected) {
+            TextButton(
+                onClick = onGoalkeeperToggled,
+                enabled = !isSaving
+            ) {
+                Text(if (isGoalkeeper) "🧤 Portero" else "Hacer portero")
+            }
         }
     }
 }
 
 @Composable
-private fun TeamRoster(title: String, playerIds: List<String>, players: List<AdminPlayer>, goalkeeperIds: List<String>, team: ActaTeam, onEvent: (NewMatchEvent) -> Unit, isSaving: Boolean) {
-    Text(title, style = MaterialTheme.typography.labelLarge, color = CrestGold)
-    playerIds.mapNotNull { id -> players.firstOrNull { it.id == id } }.forEach { player ->
-        OutlinedButton(
-            onClick = { onEvent(NewMatchEvent.GoalkeeperToggled(team, player.id)) },
-            enabled = !isSaving,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(if (player.id in goalkeeperIds) "🧤 ${player.name}" else player.name) }
+private fun TeamTabs(
+    selectedTeam: ActaTeam,
+    labelFor: (ActaTeam) -> String,
+    onTeamSelected: (ActaTeam) -> Unit,
+    enabled: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ActaTeam.entries.forEach { team ->
+            if (team == selectedTeam) {
+                Button(
+                    onClick = { onTeamSelected(team) },
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(labelFor(team), maxLines = 1)
+                }
+            } else {
+                OutlinedButton(
+                    onClick = { onTeamSelected(team) },
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(labelFor(team), maxLines = 1)
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun GoalSelection(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> Unit) {
+private fun GoalSelection(
+    uiState: NewMatchUiState,
+    selectedTeam: ActaTeam,
+    onTeamSelected: (ActaTeam) -> Unit,
+    onEvent: (NewMatchEvent) -> Unit
+) {
     FootballCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text("¿Quién marca y cuántos?", style = MaterialTheme.typography.titleMedium, color = CrestGold)
-            GoalFields(
-                team = ActaTeam.A,
-                playerIds = uiState.teamAPlayerIds,
-                uiState = uiState,
-                opposingGoalkeeperIds = uiState.goalkeeperBIds,
-                onEvent = onEvent
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Goles", style = MaterialTheme.typography.titleMedium, color = CrestGold)
+            Text(
+                "Asigna el marcador entre los goleadores. El portero se elige automáticamente cuando solo hay uno.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            TeamTabs(
+                selectedTeam = selectedTeam,
+                labelFor = { team ->
+                    "Equipo ${team.name} · ${uiState.goalsFor(team)}/${uiState.scoreFor(team) ?: 0}"
+                },
+                onTeamSelected = onTeamSelected,
+                enabled = !uiState.isSaving
             )
             GoalFields(
-                team = ActaTeam.B,
-                playerIds = uiState.teamBPlayerIds,
+                team = selectedTeam,
                 uiState = uiState,
-                opposingGoalkeeperIds = uiState.goalkeeperAIds,
                 onEvent = onEvent
             )
         }
@@ -294,101 +521,188 @@ private fun GoalSelection(uiState: NewMatchUiState, onEvent: (NewMatchEvent) -> 
 @Composable
 private fun GoalFields(
     team: ActaTeam,
-    playerIds: List<String>,
     uiState: NewMatchUiState,
-    opposingGoalkeeperIds: List<String>,
     onEvent: (NewMatchEvent) -> Unit
 ) {
     var selectedScorerId by remember(team) { mutableStateOf<String?>(null) }
     var selectedGoalkeeperId by remember(team) { mutableStateOf<String?>(null) }
     var goalCount by remember(team) { mutableStateOf(1) }
     var isOwnGoal by remember(team) { mutableStateOf(false) }
-    val goalkeeperIds = if (isOwnGoal) uiState.goalkeeperIdsFor(team) else opposingGoalkeeperIds
-    val scorers = playerIds.mapNotNull { id -> uiState.players.firstOrNull { it.id == id } }
-    val goalkeepers = goalkeeperIds.mapNotNull { id -> uiState.players.firstOrNull { it.id == id } }
-    // A goal is listed with the team that receives it. For example, an own
-    // goal by a player from A is shown in B, even though it is selected from A.
+
+    val scorerTeam = if (isOwnGoal) uiState.oppositeOf(team) else team
+    val goalkeeperTeam = uiState.oppositeOf(team)
+    val scorers = uiState.playerIdsFor(scorerTeam)
+        .mapNotNull { id -> uiState.players.firstOrNull { it.id == id } }
+    val goalkeepers = uiState.goalkeeperIdsFor(goalkeeperTeam)
+        .mapNotNull { id -> uiState.players.firstOrNull { it.id == id } }
     val goalEntries = uiState.goalEntries.filter { it.team == team }
+    val targetGoals = uiState.scoreFor(team) ?: 0
+    val assignedGoals = uiState.goalsFor(team)
+    val remainingGoals = (targetGoals - assignedGoals).coerceAtLeast(0)
+    val effectiveGoalkeeperId = goalkeepers.singleOrNull()?.id
+        ?: selectedGoalkeeperId?.takeIf { selectedId ->
+            goalkeepers.any { it.id == selectedId }
+        }
 
     LaunchedEffect(isOwnGoal) {
         selectedScorerId = null
         selectedGoalkeeperId = null
     }
-
-    Text("Equipo ${team.name} · ${uiState.goalsFor(team)} goles", style = MaterialTheme.typography.labelLarge, color = CrestGold)
-    Text("Puedes elegir a cualquier jugador alineado, incluidos los porteros.", style = MaterialTheme.typography.bodySmall)
-    OutlinedButton(
-        onClick = { isOwnGoal = !isOwnGoal },
-        enabled = !uiState.isSaving,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Text(if (isOwnGoal) "✓ Autogol" else "Marcar como autogol")
-    }
-    if (isOwnGoal) {
-        Text(
-            "Elige un jugador y un portero de este equipo. El gol sumará al Equipo ${uiState.oppositeOf(team).name}.",
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-    if (goalkeepers.isEmpty()) {
-        Text(
-            if (isOwnGoal) "Primero elige un portero de este equipo." else "Primero elige un portero del equipo rival.",
-            style = MaterialTheme.typography.bodySmall
-        )
-        return
+    LaunchedEffect(remainingGoals) {
+        goalCount = if (remainingGoals > 0) {
+            goalCount.coerceIn(1, remainingGoals)
+        } else {
+            1
+        }
     }
 
-    Text(if (isOwnGoal) "¿Quién marca en propia?" else "¿Quién ha marcado?", style = MaterialTheme.typography.bodySmall)
-    scorers.forEach { player ->
-        OutlinedButton(
-            onClick = { selectedScorerId = player.id },
-            enabled = !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(if (player.id == selectedScorerId) "✓ ${player.name}" else player.name) }
-    }
-    Text(if (isOwnGoal) "¿A qué portero de este equipo?" else "¿A quién?", style = MaterialTheme.typography.bodySmall)
-    goalkeepers.forEach { goalkeeper ->
-        OutlinedButton(
-            onClick = { selectedGoalkeeperId = goalkeeper.id },
-            enabled = !uiState.isSaving,
-            modifier = Modifier.fillMaxWidth()
-        ) { Text(if (goalkeeper.id == selectedGoalkeeperId) "✓ ${goalkeeper.name}" else goalkeeper.name) }
-    }
-    GoalCounter(
-        goals = goalCount,
-        enabled = !uiState.isSaving,
-        onGoalsChanged = { goalCount = it }
+    Text(
+        "Equipo ${team.name} · $assignedGoals de $targetGoals goles asignados",
+        style = MaterialTheme.typography.labelLarge,
+        color = CrestGold
     )
-    Button(
-        onClick = {
-            val scorerId = selectedScorerId ?: return@Button
-            val goalkeeperId = selectedGoalkeeperId ?: return@Button
-            val scoringTeam = if (isOwnGoal) uiState.oppositeOf(team) else team
-            onEvent(NewMatchEvent.GoalAdded(GoalDraft(scorerId, scoringTeam, goalCount, goalkeeperId, isOwnGoal)))
-            goalCount = 1
-        },
-        enabled = !uiState.isSaving && selectedScorerId != null && selectedGoalkeeperId != null,
-        modifier = Modifier.fillMaxWidth()
-    ) {
+
+    if (remainingGoals > 0) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(
+                checked = isOwnGoal,
+                onCheckedChange = { isOwnGoal = it },
+                enabled = !uiState.isSaving
+            )
+            Text("Es un autogol")
+        }
+        if (isOwnGoal) {
+            Text(
+                "Elige quién marcó en propia del Equipo ${scorerTeam.name}; el gol suma al Equipo ${team.name}.",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        PlayerDropdownField(
+            label = if (isOwnGoal) "Jugador que marca en propia" else "Goleador",
+            players = scorers,
+            selectedPlayerId = selectedScorerId,
+            enabled = !uiState.isSaving,
+            onPlayerSelected = { selectedScorerId = it }
+        )
+        when {
+            goalkeepers.isEmpty() -> Text(
+                "Vuelve a Equipos y selecciona un portero para el Equipo ${goalkeeperTeam.name}.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+            goalkeepers.size == 1 -> Text(
+                "Portero: ${goalkeepers.single().name} · selección automática",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            else -> PlayerDropdownField(
+                label = "Portero del Equipo ${goalkeeperTeam.name}",
+                players = goalkeepers,
+                selectedPlayerId = selectedGoalkeeperId,
+                enabled = !uiState.isSaving,
+                onPlayerSelected = { selectedGoalkeeperId = it }
+            )
+        }
+        GoalCounter(
+            goals = goalCount,
+            maximumGoals = remainingGoals,
+            enabled = !uiState.isSaving,
+            onGoalsChanged = { goalCount = it }
+        )
+        Button(
+            onClick = {
+                val scorerId = selectedScorerId ?: return@Button
+                val goalkeeperId = effectiveGoalkeeperId ?: return@Button
+                onEvent(
+                    NewMatchEvent.GoalAdded(
+                        GoalDraft(
+                            scorerPlayerId = scorerId,
+                            team = team,
+                            count = goalCount,
+                            goalkeeperPlayerId = goalkeeperId,
+                            isOwnGoal = isOwnGoal
+                        )
+                    )
+                )
+                selectedScorerId = null
+                goalCount = 1
+            },
+            enabled = !uiState.isSaving &&
+                selectedScorerId != null &&
+                effectiveGoalkeeperId != null,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (isOwnGoal) "Añadir autogol" else "Añadir gol")
+        }
+    } else if (assignedGoals == targetGoals) {
         Text(
-            if (isOwnGoal) "Añadir autogol para Equipo ${uiState.oppositeOf(team).name}"
-            else "Añadir gol"
+            if (targetGoals == 0) "Este equipo no marcó goles."
+            else "Todos los goles del Equipo ${team.name} están asignados.",
+            style = MaterialTheme.typography.bodyMedium
         )
     }
 
-    goalEntries.forEach { goal ->
-        val scorer = uiState.players.firstOrNull { it.id == goal.scorerPlayerId }?.name ?: "Jugador"
-        val goalkeeper = uiState.players.firstOrNull { it.id == goal.goalkeeperPlayerId }?.name ?: "Portero"
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    if (goalEntries.isNotEmpty()) {
+        HorizontalDivider()
+        goalEntries.forEach { goal ->
+            val scorer = uiState.players.firstOrNull { it.id == goal.scorerPlayerId }?.name
+                ?: "Jugador"
+            val goalkeeper = uiState.players.firstOrNull { it.id == goal.goalkeeperPlayerId }?.name
+                ?: "Portero"
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "$scorer · ${goal.count} gol${if (goal.count == 1) "" else "es"} a $goalkeeper" +
+                        if (goal.isOwnGoal) " · autogol" else "",
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    onClick = { onEvent(NewMatchEvent.GoalRemoved(goal)) },
+                    enabled = !uiState.isSaving
+                ) {
+                    Text("Borrar")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlayerDropdownField(
+    label: String,
+    players: List<AdminPlayer>,
+    selectedPlayerId: String?,
+    enabled: Boolean,
+    onPlayerSelected: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedName = players.firstOrNull { it.id == selectedPlayerId }?.name
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(
+            onClick = { expanded = true },
+            enabled = enabled && players.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(
-                "$scorer · ${goal.count} gol${if (goal.count == 1) "" else "es"} a $goalkeeper${if (goal.isOwnGoal) " (autogol)" else ""}",
+                selectedName ?: if (players.isEmpty()) "No hay opciones para $label" else label,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = { onEvent(NewMatchEvent.GoalRemoved(goal)) }, enabled = !uiState.isSaving) {
-                Text("Borrar")
+            Text("▾")
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            players.forEach { player ->
+                DropdownMenuItem(
+                    text = { Text(player.name) },
+                    onClick = {
+                        onPlayerSelected(player.id)
+                        expanded = false
+                    }
+                )
             }
         }
     }
@@ -397,21 +711,76 @@ private fun GoalFields(
 @Composable
 private fun GoalCounter(
     goals: Int,
+    maximumGoals: Int,
     enabled: Boolean,
     onGoalsChanged: (Int) -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("¿Cuántos?", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick = { onGoalsChanged(goals - 1) }, enabled = enabled && goals > 0) {
+        Text("Cantidad", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+        OutlinedButton(
+            onClick = { onGoalsChanged(goals - 1) },
+            enabled = enabled && goals > 1
+        ) {
             Text("−")
         }
         Text("$goals", style = MaterialTheme.typography.titleMedium, color = CrestGold)
-        Button(onClick = { onGoalsChanged(goals + 1) }, enabled = enabled) {
+        Button(
+            onClick = { onGoalsChanged(goals + 1) },
+            enabled = enabled && goals < maximumGoals
+        ) {
             Text("+")
+        }
+    }
+}
+
+private fun NewMatchUiState.canOpen(step: MatchCreationStep): Boolean = when (step) {
+    MatchCreationStep.MATCH -> true
+    MatchCreationStep.TEAMS -> hasValidMatchBasics
+    MatchCreationStep.GOALS -> hasValidMatchBasics && hasValidTeams
+}
+
+private fun NewMatchUiState.isComplete(step: MatchCreationStep): Boolean = when (step) {
+    MatchCreationStep.MATCH -> hasValidMatchBasics
+    MatchCreationStep.TEAMS -> hasValidMatchBasics && hasValidTeams
+    MatchCreationStep.GOALS -> hasValidMatchBasics && hasValidTeams && hasValidGoals
+}
+
+private fun NewMatchUiState.requirementFor(step: MatchCreationStep): String? = when (step) {
+    MatchCreationStep.MATCH -> when {
+        !NewMatchUiState.isValidDate(date) -> "selecciona la fecha del partido."
+        scoreFor(ActaTeam.A) == null || scoreFor(ActaTeam.B) == null ->
+            "introduce un marcador válido para ambos equipos."
+        !hasValidPenaltyShootout ->
+            "la tanda de penaltis necesita un ganador."
+        else -> null
+    }
+    MatchCreationStep.TEAMS -> when {
+        teamAPlayerIds.isEmpty() -> "añade al menos un jugador al Equipo A."
+        teamBPlayerIds.isEmpty() -> "añade al menos un jugador al Equipo B."
+        goalkeeperAIds.none { it in teamAPlayerIds } ->
+            "selecciona un portero para el Equipo A."
+        goalkeeperBIds.none { it in teamBPlayerIds } ->
+            "selecciona un portero para el Equipo B."
+        else -> null
+    }
+    MatchCreationStep.GOALS -> {
+        val teamATarget = scoreFor(ActaTeam.A) ?: 0
+        val teamBTarget = scoreFor(ActaTeam.B) ?: 0
+        when {
+            goalsFor(ActaTeam.A) < teamATarget ->
+                "faltan ${teamATarget - goalsFor(ActaTeam.A)} goles por asignar al Equipo A."
+            goalsFor(ActaTeam.A) > teamATarget ->
+                "hay más goles asignados que los indicados para el Equipo A."
+            goalsFor(ActaTeam.B) < teamBTarget ->
+                "faltan ${teamBTarget - goalsFor(ActaTeam.B)} goles por asignar al Equipo B."
+            goalsFor(ActaTeam.B) > teamBTarget ->
+                "hay más goles asignados que los indicados para el Equipo B."
+            !hasValidGoals -> "revisa los goleadores y porteros seleccionados."
+            else -> null
         }
     }
 }

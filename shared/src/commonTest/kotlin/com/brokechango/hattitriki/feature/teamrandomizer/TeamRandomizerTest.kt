@@ -83,4 +83,33 @@ class TeamRandomizerTest {
 
         assertEquals(6.0, score)
     }
+
+    @Test
+    fun `allows saving two generated teams made from active players`() {
+        val registeredPlayers = listOf(
+            TeamParticipant("alex", "Alex"),
+            TeamParticipant("bruno", "Bruno")
+        )
+        val state = TeamRandomizerUiState(
+            registeredPlayers = registeredPlayers,
+            teams = listOf(
+                RandomTeam("Equipo 1", listOf(registeredPlayers[0])),
+                RandomTeam("Equipo 2", listOf(registeredPlayers[1]))
+            )
+        )
+
+        assertTrue(state.canSaveDraft)
+    }
+
+    @Test
+    fun `does not save manual participants as a match draft`() {
+        val state = TeamRandomizerUiState(
+            teams = listOf(
+                RandomTeam("Equipo 1", listOf(TeamParticipant("manual-ana", "Ana"))),
+                RandomTeam("Equipo 2", listOf(TeamParticipant("manual-bruno", "Bruno")))
+            )
+        )
+
+        assertTrue(state.saveDraftRequirement?.contains("plantilla activa") == true)
+    }
 }

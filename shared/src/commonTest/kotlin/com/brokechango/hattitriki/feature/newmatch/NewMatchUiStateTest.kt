@@ -61,6 +61,40 @@ class NewMatchUiStateTest {
     }
 
     @Test
+    fun `reports each creation step readiness independently`() {
+        val matchReady = NewMatchUiState(
+            isAdmin = true,
+            date = "2026-07-20",
+            teamAScore = "1",
+            teamBScore = "0"
+        )
+
+        assertTrue(matchReady.hasValidMatchBasics)
+        assertFalse(matchReady.hasValidTeams)
+        assertFalse(matchReady.hasValidGoals)
+
+        val teamsReady = matchReady.copy(
+            teamAPlayerIds = listOf("alex"),
+            teamBPlayerIds = listOf("bruno"),
+            goalkeeperAIds = listOf("alex"),
+            goalkeeperBIds = listOf("bruno")
+        )
+
+        assertTrue(teamsReady.hasValidMatchBasics)
+        assertTrue(teamsReady.hasValidTeams)
+        assertFalse(teamsReady.hasValidGoals)
+
+        val goalsReady = teamsReady.copy(
+            goalEntries = listOf(
+                GoalDraft("alex", ActaTeam.A, 1, "bruno")
+            )
+        )
+
+        assertTrue(goalsReady.hasValidGoals)
+        assertTrue(goalsReady.canSubmit)
+    }
+
+    @Test
     fun `allows a scorer to register goals against different goalkeepers`() {
         val state = NewMatchUiState(
             isAdmin = true,

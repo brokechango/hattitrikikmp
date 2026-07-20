@@ -6,6 +6,9 @@ import com.brokechango.hattitriki.core.data.AdminPlayerRepository
 import com.brokechango.hattitriki.core.data.AdminPlayersResult
 import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.MatchTeamsDraft
+import com.brokechango.hattitriki.core.data.MatchTeamsDraftStore
+import com.brokechango.hattitriki.core.data.NoOpMatchTeamsDraftStore
 import com.brokechango.hattitriki.core.data.playerStats
 import com.brokechango.hattitriki.core.model.TeamSide
 import kotlinx.coroutines.launch
@@ -15,9 +18,14 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class TeamRandomizerViewModel(
     private val adminPlayerRepository: AdminPlayerRepository?,
-    private val footballRepository: FriendlyFootballRepository?
+    private val footballRepository: FriendlyFootballRepository?,
+    private val matchTeamsDraftStore: MatchTeamsDraftStore = NoOpMatchTeamsDraftStore
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(TeamRandomizerUiState())
+    private val _uiState = MutableStateFlow(
+        TeamRandomizerUiState(
+            savedDraft = runCatching { matchTeamsDraftStore.load() }.getOrNull()
+        )
+    )
     val uiState: StateFlow<TeamRandomizerUiState> = _uiState.asStateFlow()
 
     init {
@@ -30,9 +38,12 @@ class TeamRandomizerViewModel(
             is TeamRandomizerEvent.TeamCountChanged -> updateInput(teamCountInput = event.value)
             TeamRandomizerEvent.Generate -> generateTeams()
             TeamRandomizerEvent.UseActiveRoster -> useActiveRoster()
+            TeamRandomizerEvent.SaveDraft -> saveDraft()
+            TeamRandomizerEvent.ClearDraft -> clearDraft()
             TeamRandomizerEvent.ToggleStatsBalance -> _uiState.value = _uiState.value.copy(
                 balanceStats = !_uiState.value.balanceStats,
                 teams = emptyList(),
+                draftMessage = null,
                 errorMessage = null
             )
             TeamRandomizerEvent.ReloadRoster -> reloadRoster()
@@ -41,12 +52,14 @@ class TeamRandomizerViewModel(
                     participantInput = "Alex\nBruno\nCarmen\nDani\nElena\nFran\nGabi\nHugo\nInés\nJavi",
                     teamCountInput = "2",
                     teams = emptyList(),
+                    draftMessage = null,
                     errorMessage = null
                 )
             }
             TeamRandomizerEvent.Clear -> _uiState.value = _uiState.value.copy(
                 participantInput = "",
                 teams = emptyList(),
+                draftMessage = null,
                 errorMessage = null
             )
         }
@@ -57,6 +70,7 @@ class TeamRandomizerViewModel(
             participantInput = participantInput ?: _uiState.value.participantInput,
             teamCountInput = teamCountInput ?: _uiState.value.teamCountInput,
             teams = emptyList(),
+            draftMessage = null,
             errorMessage = null
         )
     }
@@ -77,8 +91,16 @@ class TeamRandomizerViewModel(
             )
         }
         _uiState.value = result.fold(
-            onSuccess = { teams -> currentState.copy(teams = teams, errorMessage = null) },
-            onFailure = { error -> currentState.copy(teams = emptyList(), errorMessage = error.message) }
+            onSuccess = { teams ->
+                currentState.copy(teams = teams, draftMessage = null, errorMessage = null)
+            },
+            onFailure = { error ->
+                currentState.copy(
+                    teams = emptyList(),
+                    draftMessage = null,
+                    errorMessage = error.message
+                )
+            }
         )
     }
 
@@ -93,8 +115,54 @@ class TeamRandomizerViewModel(
         _uiState.value = currentState.copy(
             participantInput = currentState.registeredPlayers.joinToString("\n") { it.name },
             teams = emptyList(),
+            draftMessage = null,
             errorMessage = null
         )
+    }
+
+    private fun saveDraft() {
+        val state = _uiState.value
+        val requirement = state.saveDraftRequirement
+        if (requirement != null) {
+            _uiState.value = state.copy(errorMessage = requirement)
+            return
+        }
+
+        val draft = MatchTeamsDraft(
+            teamAPlayerIds = state.teams[0].players.map(TeamParticipant::id),
+            teamBPlayerIds = state.teams[1].players.map(TeamParticipant::id)
+        )
+        runCatching { matchTeamsDraftStore.save(draft) }
+            .onSuccess {
+                _uiState.value = state.copy(
+                    savedDraft = draft,
+                    draftMessage = "Equipos guardados como borrador para el próximo partido.",
+                    errorMessage = null
+                )
+            }
+            .onFailure { error ->
+                _uiState.value = state.copy(
+                    draftMessage = null,
+                    errorMessage = error.message ?: "No se ha podido guardar el borrador."
+                )
+            }
+    }
+
+    private fun clearDraft() {
+        val state = _uiState.value
+        runCatching { matchTeamsDraftStore.clear() }
+            .onSuccess {
+                _uiState.value = state.copy(
+                    savedDraft = null,
+                    draftMessage = "Borrador de equipos descartado.",
+                    errorMessage = null
+                )
+            }
+            .onFailure { error ->
+                _uiState.value = state.copy(
+                    errorMessage = error.message ?: "No se ha podido descartar el borrador."
+                )
+            }
     }
 
     private fun reloadRoster() {

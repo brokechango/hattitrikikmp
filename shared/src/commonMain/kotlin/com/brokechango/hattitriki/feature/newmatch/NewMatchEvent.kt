@@ -14,5 +14,6 @@ sealed interface NewMatchEvent {
     data class GoalkeeperToggled(val team: ActaTeam, val playerId: String) : NewMatchEvent
     data class GoalAdded(val goal: GoalDraft) : NewMatchEvent
     data class GoalRemoved(val goal: GoalDraft) : NewMatchEvent
+    data object DiscardTeamsDraft : NewMatchEvent
     data object Submit : NewMatchEvent
 }
