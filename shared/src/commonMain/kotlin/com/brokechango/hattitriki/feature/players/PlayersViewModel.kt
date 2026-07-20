@@ -125,21 +125,21 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
         rankingsByCategory = mapOf(
             PlayerRankingCategory.TOP_SCORER to stats
                 .sortedWith(compareByDescending<PlayerStats> { it.goals }.thenByDescending { it.wins })
-                .map { rankingEntry(it, "${it.goals} G") },
+                .map { rankingEntry(it, it.goals.toString()) },
             PlayerRankingCategory.GOALS_PER_MATCH to stats
                 .filter { it.matchesPlayed > 0 }
                 .sortedWith(
                     compareByDescending<PlayerStats> { it.goals.toDouble() / it.matchesPlayed }
                         .thenByDescending { it.goals }
                 )
-                .map { rankingEntry(it, "${formatPerMatch(it.goals, it.matchesPlayed)} G/P") },
+                .map { rankingEntry(it, formatPerMatch(it.goals, it.matchesPlayed)) },
             PlayerRankingCategory.ZAMORA to goalkeeperRankings
                 .sortedWith(
                     compareBy<Pair<PlayerStats, Int>> { it.second }
                         .thenByDescending { it.first.goalkeeperMatches }
                         .thenByDescending { it.first.wins }
                 )
-                .map { (stats, goalsAgainst) -> rankingEntry(stats, "$goalsAgainst GC") },
+                .map { (stats, goalsAgainst) -> rankingEntry(stats, goalsAgainst.toString()) },
             PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH to goalkeeperRankings
                 .sortedWith(
                     compareBy<Pair<PlayerStats, Int>> {
@@ -148,14 +148,14 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
                         .thenByDescending { it.first.wins }
                 )
                 .map { (stats, goalsAgainst) ->
-                    rankingEntry(stats, "${formatPerMatch(goalsAgainst, stats.goalkeeperMatches)} GC/P")
+                    rankingEntry(stats, formatPerMatch(goalsAgainst, stats.goalkeeperMatches))
                 },
             PlayerRankingCategory.MOST_PLAYED to stats
                 .sortedWith(compareByDescending<PlayerStats> { it.matchesPlayed }.thenByDescending { it.wins })
-                .map { rankingEntry(it, "${it.matchesPlayed} PJ") },
+                .map { rankingEntry(it, it.matchesPlayed.toString()) },
             PlayerRankingCategory.MOST_WINS to stats
                 .sortedWith(compareByDescending<PlayerStats> { it.wins }.thenByDescending { it.goals })
-                .map { rankingEntry(it, "${it.wins} V") },
+                .map { rankingEntry(it, it.wins.toString()) },
             PlayerRankingCategory.PLAYER_ON_FORM to stats
                 .map { it to playerOnFormTotal(it) }
                 .sortedWith(

@@ -6,7 +6,7 @@ import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 data class PlayersUiState(
     val selectedCategory: PlayerRankingCategory = PlayerRankingCategory.TOP_SCORER,
     val rankings: List<PlayerRankingEntry> = emptyList(),
-    val rankingView: RankingView = RankingView.DETAILED,
+    val rankingView: RankingView = RankingView.COMPACT,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
 )

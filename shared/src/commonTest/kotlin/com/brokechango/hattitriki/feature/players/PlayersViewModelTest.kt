@@ -13,6 +13,13 @@ import kotlin.test.assertEquals
 class PlayersViewModelTest {
 
     @Test
+    fun rankingViewIsCompactByDefault() {
+        val viewModel = PlayersViewModel(initialSnapshot = leagueSnapshot())
+
+        assertEquals(RankingView.COMPACT, viewModel.uiState.value.rankingView)
+    }
+
+    @Test
     fun detailedViewShowsEachPlayersFiveMostRecentResults() {
         val viewModel = PlayersViewModel(initialSnapshot = leagueSnapshot())
 
@@ -74,7 +81,7 @@ class PlayersViewModelTest {
         viewModel.selectCategory(PlayerRankingCategory.ZAMORA)
 
         assertEquals(
-            listOf("ana" to "0 GC", "carlos" to "1 GC", "bruno" to "2 GC"),
+            listOf("ana" to "0", "carlos" to "1", "bruno" to "2"),
             viewModel.uiState.value.rankings.map { it.stats.player.id to it.value }
         )
     }
