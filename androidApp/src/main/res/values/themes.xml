@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Hattitriki" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:navigationBarColor">@color/hattitriki_navy</item>
+        <item name="android:statusBarColor">@color/hattitriki_navy</item>
+        <item name="android:windowBackground">@color/hattitriki_navy</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="Theme.Hattitriki.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenBackground">@color/hattitriki_navy</item>
+        <item name="postSplashScreenTheme">@style/Theme.Hattitriki</item>
+    </style>
+</resources>

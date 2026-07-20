@@ -8,5 +8,10 @@
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>HattitrikiNavy</string>
+	</dict>
 </dict>
 </plist>
