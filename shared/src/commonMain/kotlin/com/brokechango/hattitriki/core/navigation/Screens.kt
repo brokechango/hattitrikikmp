@@ -35,7 +35,10 @@ sealed interface Screens : NavKey {
     data object ManagePlayers : Screens
 
     @Serializable
-    data object TeamRandomizer : Screens
+    data class TeamRandomizer(val openTime: Long) : Screens
+
+    @Serializable
+    data class TeamRandomizerResult(val openTime: Long) : Screens
 
     @Serializable
     data class EditMatch(val matchId: String) : Screens
@@ -59,6 +62,10 @@ val screensSavedStateConfiguration = SavedStateConfiguration {
             subclass(Screens.ManageMatches::class, Screens.ManageMatches.serializer())
             subclass(Screens.ManagePlayers::class, Screens.ManagePlayers.serializer())
             subclass(Screens.TeamRandomizer::class, Screens.TeamRandomizer.serializer())
+            subclass(
+                Screens.TeamRandomizerResult::class,
+                Screens.TeamRandomizerResult.serializer()
+            )
             subclass(Screens.EditMatch::class, Screens.EditMatch.serializer())
             subclass(Screens.EditPlayer::class, Screens.EditPlayer.serializer())
             subclass(Screens.MatchDetail::class, Screens.MatchDetail.serializer())

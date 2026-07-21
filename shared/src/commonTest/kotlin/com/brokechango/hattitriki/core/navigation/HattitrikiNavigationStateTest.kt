@@ -55,6 +55,25 @@ class HattitrikiNavigationStateTest {
         assertEquals(listOf(Screens.Home, Screens.History), navigation.backStackFor(Screens.History))
     }
 
+    @Test
+    fun `back from generated teams returns to the generator`() {
+        val navigation = navigationState()
+        val openTime = 42L
+        val generator = Screens.TeamRandomizer(openTime)
+
+        navigation.navigate(Screens.Admin)
+        navigation.navigate(generator)
+        navigation.navigate(Screens.TeamRandomizerResult(openTime))
+
+        navigation.navigateBack()
+
+        assertEquals(generator, navigation.currentScreen)
+        assertEquals(
+            listOf(Screens.Home, Screens.Admin, generator),
+            navigation.backStackFor(Screens.Admin)
+        )
+    }
+
     private fun navigationState(): HattitrikiNavigationState = HattitrikiNavigationState(
         selectedTab = mutableStateOf(HattitrikiTab.Home.name),
         tabBackStacks = mapOf(

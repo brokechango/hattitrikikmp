@@ -18,14 +18,14 @@ import androidx.navigation3.runtime.rememberNavBackStack
  * reserved for navigation inside that tab.
  */
 @Composable
-fun rememberHattitrikiNavigationState(): HattitrikiNavigationState {
+fun rememberHattitrikiNavigationState(isAdmin: Boolean = true): HattitrikiNavigationState {
     val homeBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Home)
     val historyBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.History)
     val playersBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Players)
     val adminBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Admin)
-    val selectedTab = rememberSaveable { mutableStateOf(HattitrikiTab.Home.name) }
+    val selectedTab = rememberSaveable(isAdmin) { mutableStateOf(HattitrikiTab.Home.name) }
 
-    return remember(homeBackStack, historyBackStack, playersBackStack, adminBackStack) {
+    return remember(selectedTab, homeBackStack, historyBackStack, playersBackStack, adminBackStack) {
         HattitrikiNavigationState(
             selectedTab = selectedTab,
             tabBackStacks = mapOf(

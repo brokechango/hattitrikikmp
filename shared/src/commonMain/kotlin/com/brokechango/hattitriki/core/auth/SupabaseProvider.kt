@@ -2,6 +2,7 @@ package com.brokechango.hattitriki.core.auth
 
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.AuthConfig
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 
@@ -31,15 +32,27 @@ data class SupabaseCredentials(
  * Credentials are injected by the app's platform configuration rather than
  * being committed in common source code.
  */
-internal class SupabaseProvider(credentials: SupabaseCredentials) {
+internal class SupabaseProvider(
+    credentials: SupabaseCredentials,
+    configureAuth: AuthConfig.() -> Unit = {}
+) {
     val client: SupabaseClient = createSupabaseClient(
         supabaseUrl = credentials.url,
         supabaseKey = credentials.publishableKey
     ) {
-        install(Auth)
+        install(Auth, configureAuth)
         install(Postgrest)
     }
 }
 
-fun createAdminAuthRepository(credentials: SupabaseCredentials): AdminAuthRepository =
-    AdminAuthRepository(SupabaseProvider(credentials).client)
+fun createAuthRepository(
+    credentials: SupabaseCredentials,
+    passwordSetupPending: Boolean = false,
+    onPasswordSetupResolved: () -> Unit = {},
+    configureAuth: AuthConfig.() -> Unit = {}
+): AuthRepository =
+    AuthRepository(
+        client = SupabaseProvider(credentials, configureAuth).client,
+        passwordSetupPending = passwordSetupPending,
+        onPasswordSetupResolved = onPasswordSetupResolved
+    )

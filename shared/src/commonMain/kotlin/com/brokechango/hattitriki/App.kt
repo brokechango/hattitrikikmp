@@ -2,15 +2,23 @@ package com.brokechango.hattitriki
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -19,30 +27,40 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestBlack
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
-import com.brokechango.hattitriki.core.auth.AdminAuthRepository
+import com.brokechango.hattitriki.core.auth.AuthRepository
+import com.brokechango.hattitriki.core.auth.LeagueRole
 import com.brokechango.hattitriki.core.data.AdminMatchRepository
 import com.brokechango.hattitriki.core.data.AdminPlayerRepository
 import com.brokechango.hattitriki.core.data.MultiplatformSettingsMatchTeamsDraftStore
@@ -51,9 +69,11 @@ import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
 import com.brokechango.hattitriki.core.navigation.rememberHattitrikiNavigationState
-import com.brokechango.hattitriki.core.navigation.screensSavedStateConfiguration
 import com.brokechango.hattitriki.feature.admin.AdminScreen
-import com.brokechango.hattitriki.feature.admin.AdminViewModel
+import com.brokechango.hattitriki.feature.auth.AuthEvent
+import com.brokechango.hattitriki.feature.auth.AuthGateState
+import com.brokechango.hattitriki.feature.auth.AuthScreen
+import com.brokechango.hattitriki.feature.auth.AuthViewModel
 import com.brokechango.hattitriki.feature.history.HistoryEvent
 import com.brokechango.hattitriki.feature.history.HistoryScreen
 import com.brokechango.hattitriki.feature.history.HistoryViewModel
@@ -72,6 +92,7 @@ import com.brokechango.hattitriki.feature.newmatch.NewMatchScreen
 import com.brokechango.hattitriki.feature.newmatch.NewMatchViewModel
 import com.brokechango.hattitriki.feature.newplayer.NewPlayerScreen
 import com.brokechango.hattitriki.feature.newplayer.NewPlayerViewModel
+import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerResultScreen
 import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerScreen
 import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
@@ -79,25 +100,58 @@ import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.hattitriki_app_icon
+import hattitriki.shared.generated.resources.icon_home
+import hattitriki.shared.generated.resources.icon_matches
+import hattitriki.shared.generated.resources.icon_rankings
+import hattitriki.shared.generated.resources.icon_settings
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.vectorResource
 
 @Composable
 @Preview
 @OptIn(ExperimentalMaterial3Api::class)
 fun App(
-    adminAuthRepository: AdminAuthRepository? = null,
-    appVersion: String = "1.0"
+    authRepository: AuthRepository? = null,
+    appVersion: String = "1.0",
+    initialAuthEmail: String = "",
+    initialAuthPassword: String = "",
+    submitInitialAuth: Boolean = false
 ) {
     HattitrikiTheme {
-        val navigation = rememberHattitrikiNavigationState()
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val authViewModel = remember(authRepository) {
+            AuthViewModel(
+                authRepository = authRepository,
+                initialEmail = initialAuthEmail,
+                initialPassword = initialAuthPassword,
+                submitInitialLogin = submitInitialAuth
+            )
+        }
+        val authUiState by authViewModel.uiState.collectAsStateWithLifecycle()
+        val access = (authUiState.gateState as? AuthGateState.Authenticated)?.access
+
+        if (access == null) {
+            AuthScreen(
+                uiState = authUiState,
+                onEvent = authViewModel::onEvent
+            )
+            return@BoxWithConstraints
+        }
+
+        val activeAuthRepository = checkNotNull(authRepository)
+        val isAdmin = access.role == LeagueRole.ADMIN
+        val useDesktopWebLayout = getPlatform().name == "Web" && maxWidth >= 980.dp
+        val navigation = rememberHattitrikiNavigationState(isAdmin)
         val currentScreen = navigation.currentScreen
         val currentTopLevelScreen = navigation.currentTopLevelScreen
+        val canNavigateWithinTab = navigation.canNavigateBack && currentScreen != currentTopLevelScreen
         val homeScrollState = rememberScrollState()
         val historyScrollState = rememberScrollState()
         val adminScrollState = rememberScrollState()
 
-        val footballRepository = remember(adminAuthRepository) {
-            adminAuthRepository?.let { SupabaseFriendlyFootballRepository(it.client) }
+        val footballRepository = remember(activeAuthRepository) {
+            SupabaseFriendlyFootballRepository(activeAuthRepository.client)
         }
         val homeStatsOrderStore = remember {
             MultiplatformSettingsHomeStatsOrderStore(settings)
@@ -110,7 +164,28 @@ fun App(
         }
         val historyViewModel = remember(footballRepository) { HistoryViewModel(footballRepository) }
         val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
-        val adminViewModel = remember(adminAuthRepository) { AdminViewModel(adminAuthRepository) }
+        val activeTeamRandomizerOpenTime = when (currentScreen) {
+            is Screens.TeamRandomizer -> currentScreen.openTime
+            is Screens.TeamRandomizerResult -> currentScreen.openTime
+            else -> null
+        }
+        val teamRandomizerViewModel = remember(
+            activeAuthRepository,
+            footballRepository,
+            matchTeamsDraftStore,
+            activeTeamRandomizerOpenTime
+        ) {
+            activeTeamRandomizerOpenTime?.let {
+                TeamRandomizerViewModel(
+                    adminPlayerRepository = AdminPlayerRepository(
+                        activeAuthRepository.client,
+                        activeAuthRepository
+                    ),
+                    footballRepository = footballRepository,
+                    matchTeamsDraftStore = matchTeamsDraftStore
+                )
+            }
+        }
 
         LaunchedEffect(currentTopLevelScreen) {
             when (currentTopLevelScreen) {
@@ -122,22 +197,44 @@ fun App(
             }
         }
 
+        LaunchedEffect(currentScreen) {
+            if (currentTopLevelScreen == Screens.Admin) {
+                adminScrollState.scrollTo(0)
+            }
+        }
+
         Scaffold(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding(),
             topBar = {
-                MatchTopBar(
-                    currentScreen = currentScreen,
-                    canNavigateBack = navigation.canNavigateBack,
-                    onBack = navigation::navigateBack
-                )
+                if (useDesktopWebLayout) {
+                    DesktopWebTopBar(
+                        currentScreen = currentScreen,
+                        currentTopLevelScreen = currentTopLevelScreen,
+                        canNavigateBack = canNavigateWithinTab,
+                        isAdmin = isAdmin,
+                        onBack = navigation::navigateBack,
+                        onNavigate = navigation::selectTopLevel,
+                        onLogout = { authViewModel.onEvent(AuthEvent.Logout) }
+                    )
+                } else {
+                    MatchTopBar(
+                        currentScreen = currentScreen,
+                        canNavigateBack = canNavigateWithinTab,
+                        onBack = navigation::navigateBack,
+                        onLogout = { authViewModel.onEvent(AuthEvent.Logout) }
+                    )
+                }
             },
             bottomBar = {
-                MainNavigationBar(
-                    currentScreen = currentTopLevelScreen,
-                    onNavigate = navigation::selectTopLevel
-                )
+                if (!useDesktopWebLayout) {
+                    MainNavigationBar(
+                        currentScreen = currentTopLevelScreen,
+                        isAdmin = isAdmin,
+                        onNavigate = navigation::selectTopLevel
+                    )
+                }
             }
             ) { innerPadding ->
                 PitchBackground(
@@ -146,28 +243,37 @@ fun App(
                         .padding(innerPadding)
                 ) {
                     Box(
-                        modifier = Modifier.fillMaxSize().padding(16.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(
+                                horizontal = if (useDesktopWebLayout) 28.dp else 16.dp,
+                                vertical = if (useDesktopWebLayout) 24.dp else 16.dp
+                            ),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Box(
                             modifier = Modifier
-                                .widthIn(max = 1040.dp)
+                                .widthIn(max = if (useDesktopWebLayout) 1180.dp else 1040.dp)
                                 .fillMaxSize()
                         ) {
                             AnimatedContent(
                                 targetState = currentTopLevelScreen,
                                 transitionSpec = {
-                                    val direction = if (
-                                        topLevelScreenIndex(targetState) > topLevelScreenIndex(initialState)
-                                    ) 1 else -1
+                                    if (useDesktopWebLayout) {
+                                        fadeIn(tween(180)) togetherWith fadeOut(tween(120))
+                                    } else {
+                                        val direction = if (
+                                            topLevelScreenIndex(targetState) > topLevelScreenIndex(initialState)
+                                        ) 1 else -1
 
-                                    slideInHorizontally(
-                                        initialOffsetX = { direction * it },
-                                        animationSpec = tween(300)
-                                    ) togetherWith slideOutHorizontally(
-                                        targetOffsetX = { -direction * it },
-                                        animationSpec = tween(300)
-                                    )
+                                        slideInHorizontally(
+                                            initialOffsetX = { direction * it },
+                                            animationSpec = tween(300)
+                                        ) togetherWith slideOutHorizontally(
+                                            targetOffsetX = { -direction * it },
+                                            animationSpec = tween(300)
+                                        )
+                                    }
                                 },
                                 label = "Bottom navigation transition"
                             ) { topLevelScreen ->
@@ -195,7 +301,9 @@ fun App(
                                         scrollState = homeScrollState,
                                         onEvent = { event ->
                                             when (event) {
-                                                HomeEvent.OpenAdmin -> navigation.navigate(Screens.Admin)
+                                                HomeEvent.OpenAdmin -> if (isAdmin) {
+                                                    navigation.navigate(Screens.Admin)
+                                                }
                                                 HomeEvent.OpenHistory -> navigation.navigate(Screens.History)
                                                 is HomeEvent.OpenPlayers -> {
                                                     playersViewModel.selectCategory(event.category)
@@ -242,8 +350,7 @@ fun App(
                                 }
 
                                 entry<Screens.Admin> {
-                                    AdminScreen(
-                                        viewModel = adminViewModel,
+                                    if (isAdmin) AdminScreen(
                                         appVersion = appVersion,
                                         onNewMatch = {
                                             navigation.navigate(
@@ -256,16 +363,24 @@ fun App(
                                         onAddPlayer = { navigation.navigate(Screens.NewPlayer) },
                                         onManageMatches = { navigation.navigate(Screens.ManageMatches) },
                                         onManagePlayers = { navigation.navigate(Screens.ManagePlayers) },
-                                        onTeamRandomizer = { navigation.navigate(Screens.TeamRandomizer) }
+                                        onTeamRandomizer = {
+                                            navigation.navigate(
+                                                Screens.TeamRandomizer(
+                                                    openTime = kotlin.time.Clock.System.now()
+                                                        .toEpochMilliseconds()
+                                                )
+                                            )
+                                        }
                                     )
                                 }
 
                                 entry<Screens.NewMatch> { screen ->
-                                    val newMatchViewModel = remember(adminAuthRepository, screen.openTime) {
+                                    val newMatchViewModel = remember(activeAuthRepository, screen.openTime) {
                                         NewMatchViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminMatchRepository(repository.client, repository)
-                                            },
+                                            AdminMatchRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            ),
                                             matchTeamsDraftStore = matchTeamsDraftStore
                                         )
                                     }
@@ -276,11 +391,12 @@ fun App(
                                 }
 
                                 entry<Screens.NewPlayer> {
-                                    val newPlayerViewModel = remember(adminAuthRepository) {
+                                    val newPlayerViewModel = remember(activeAuthRepository) {
                                         NewPlayerViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminPlayerRepository(repository.client, repository)
-                                            }
+                                            AdminPlayerRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            )
                                         )
                                     }
                                     NewPlayerScreen(
@@ -290,11 +406,12 @@ fun App(
                                 }
 
                                 entry<Screens.ManageMatches> {
-                                    val manageMatchesViewModel = remember(adminAuthRepository) {
+                                    val manageMatchesViewModel = remember(activeAuthRepository) {
                                         ManageMatchesViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminMatchRepository(repository.client, repository)
-                                            }
+                                            AdminMatchRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            )
                                         )
                                     }
                                     ManageMatchesScreen(
@@ -304,11 +421,12 @@ fun App(
                                 }
 
                                 entry<Screens.ManagePlayers> {
-                                    val managePlayersViewModel = remember(adminAuthRepository) {
+                                    val managePlayersViewModel = remember(activeAuthRepository) {
                                         ManagePlayersViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminPlayerRepository(repository.client, repository)
-                                            }
+                                            AdminPlayerRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            )
                                         )
                                     }
                                     ManagePlayersScreen(
@@ -317,25 +435,33 @@ fun App(
                                     )
                                 }
 
-                                entry<Screens.TeamRandomizer> {
-                                    val teamRandomizerViewModel = remember(adminAuthRepository, footballRepository) {
-                                        TeamRandomizerViewModel(
-                                            adminPlayerRepository = adminAuthRepository?.let { repository ->
-                                                AdminPlayerRepository(repository.client, repository)
-                                            },
-                                            footballRepository = footballRepository,
-                                            matchTeamsDraftStore = matchTeamsDraftStore
-                                        )
-                                    }
-                                    TeamRandomizerScreen(viewModel = teamRandomizerViewModel)
+                                entry<Screens.TeamRandomizer> { screen ->
+                                    TeamRandomizerScreen(
+                                        viewModel = checkNotNull(teamRandomizerViewModel),
+                                        onResultReady = {
+                                            navigation.navigate(
+                                                Screens.TeamRandomizerResult(
+                                                    openTime = screen.openTime
+                                                )
+                                            )
+                                        }
+                                    )
+                                }
+
+                                entry<Screens.TeamRandomizerResult> {
+                                    TeamRandomizerResultScreen(
+                                        viewModel = checkNotNull(teamRandomizerViewModel),
+                                        onBack = navigation::navigateBack
+                                    )
                                 }
 
                                 entry<Screens.EditMatch> { screen ->
-                                    val editMatchViewModel = remember(adminAuthRepository, screen.matchId) {
+                                    val editMatchViewModel = remember(activeAuthRepository, screen.matchId) {
                                         NewMatchViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminMatchRepository(repository.client, repository)
-                                            },
+                                            AdminMatchRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            ),
                                             matchId = screen.matchId
                                         )
                                     }
@@ -346,11 +472,12 @@ fun App(
                                 }
 
                                 entry<Screens.EditPlayer> { screen ->
-                                    val editPlayerViewModel = remember(adminAuthRepository, screen.playerId) {
+                                    val editPlayerViewModel = remember(activeAuthRepository, screen.playerId) {
                                         NewPlayerViewModel(
-                                            adminAuthRepository?.let { repository ->
-                                                AdminPlayerRepository(repository.client, repository)
-                                            },
+                                            AdminPlayerRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            ),
                                             playerId = screen.playerId
                                         )
                                     }
@@ -413,6 +540,7 @@ fun App(
             }
         }
     }
+    }
 }
 
 private fun topLevelScreenIndex(screen: Screens): Int = when (screen) {
@@ -428,7 +556,8 @@ private fun topLevelScreenIndex(screen: Screens): Int = when (screen) {
 private fun MatchTopBar(
     currentScreen: Screens,
     canNavigateBack: Boolean,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onLogout: () -> Unit
 ) {
     TopAppBar(
         title = {
@@ -467,6 +596,14 @@ private fun MatchTopBar(
                 }
             }
         },
+        actions = {
+            TextButton(
+                onClick = onLogout,
+                colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
+            ) {
+                Text("Salir", fontWeight = FontWeight.Bold)
+            }
+        },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = CrestNavy,
             titleContentColor = CrestWhite,
@@ -485,7 +622,8 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
     Screens.NewPlayer -> "Añadir jugador"
     Screens.ManageMatches -> "Gestionar partidos"
     Screens.ManagePlayers -> "Gestionar jugadores"
-    Screens.TeamRandomizer -> "Aleatorizador"
+    is Screens.TeamRandomizer -> "Generador de equipos"
+    is Screens.TeamRandomizerResult -> "Resultado"
     is Screens.EditMatch -> "Editar partido"
     is Screens.EditPlayer -> "Editar jugador"
     is Screens.MatchDetail -> "Acta del partido"
@@ -494,6 +632,7 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
 @Composable
 private fun MainNavigationBar(
     currentScreen: Screens,
+    isAdmin: Boolean,
     onNavigate: (Screens) -> Unit
 ) {
     NavigationBar(
@@ -505,29 +644,201 @@ private fun MainNavigationBar(
             selected = currentScreen == Screens.Home,
             onClick = { onNavigate(Screens.Home) },
             label = { Text("Inicio") },
-            icon = { Text("⌂") },
+            icon = {
+                NavigationIcon(
+                    resource = Res.drawable.icon_home,
+                    contentDescription = "Inicio"
+                )
+            },
             colors = navItemColors()
         )
         NavigationBarItem(
             selected = currentScreen == Screens.History,
             onClick = { onNavigate(Screens.History) },
             label = { Text("Partidos") },
-            icon = { Text("≋") },
+            icon = {
+                NavigationIcon(
+                    resource = Res.drawable.icon_matches,
+                    contentDescription = "Partidos"
+                )
+            },
             colors = navItemColors()
         )
         NavigationBarItem(
             selected = currentScreen == Screens.Players,
             onClick = { onNavigate(Screens.Players) },
             label = { Text("Clasificaciones") },
-            icon = { Text("◎") },
+            icon = {
+                NavigationIcon(
+                    resource = Res.drawable.icon_rankings,
+                    contentDescription = "Clasificaciones"
+                )
+            },
             colors = navItemColors()
         )
-        NavigationBarItem(
-            selected = currentScreen == Screens.Admin,
-            onClick = { onNavigate(Screens.Admin) },
-            label = { Text("Míster") },
-            icon = { Text("⚙") },
-            colors = navItemColors()
+        if (isAdmin) {
+            NavigationBarItem(
+                selected = currentScreen == Screens.Admin,
+                onClick = { onNavigate(Screens.Admin) },
+                label = { Text("Míster") },
+                icon = {
+                    NavigationIcon(
+                        resource = Res.drawable.icon_settings,
+                        contentDescription = "Míster"
+                    )
+                },
+                colors = navItemColors()
+            )
+        }
+    }
+}
+
+@Composable
+private fun NavigationIcon(resource: DrawableResource, contentDescription: String) {
+    Icon(
+        imageVector = vectorResource(resource),
+        contentDescription = contentDescription,
+        modifier = Modifier.size(24.dp)
+    )
+}
+
+private data class DesktopDestination(
+    val screen: Screens,
+    val label: String
+)
+
+private val desktopDestinations = listOf(
+    DesktopDestination(Screens.Home, "Inicio"),
+    DesktopDestination(Screens.History, "Partidos"),
+    DesktopDestination(Screens.Players, "Clasificaciones")
+)
+
+private val desktopAdminDestination = DesktopDestination(Screens.Admin, "Zona míster")
+
+@Composable
+private fun DesktopWebTopBar(
+    currentScreen: Screens,
+    currentTopLevelScreen: Screens,
+    canNavigateBack: Boolean,
+    isAdmin: Boolean,
+    onBack: () -> Unit,
+    onNavigate: (Screens) -> Unit,
+    onLogout: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(CrestNavy)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Row(
+                modifier = Modifier
+                    .widthIn(max = 1240.dp)
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = { onNavigate(Screens.Home) },
+                    contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
+                    colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Image(
+                            painter = painterResource(Res.drawable.hattitriki_app_icon),
+                            contentDescription = "Hattitriki FC",
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(
+                                text = "HATTITRIKI FC",
+                                style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.8.sp
+                            )
+                            Text(
+                                text = "LIGA GENUINE",
+                                style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
+                                color = CrestGold,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.7.sp
+                            )
+                        }
+                    }
+                }
+
+                if (canNavigateBack) {
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(width = 1.dp, height = 28.dp)
+                            .background(CrestWhite.copy(alpha = 0.2f))
+                    )
+                    TextButton(
+                        onClick = onBack,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
+                    ) {
+                        Text("Volver", fontWeight = FontWeight.Bold)
+                    }
+                    Text(
+                        text = topBarTitle(currentScreen),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
+                        color = CrestWhite.copy(alpha = 0.78f),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                val visibleDestinations = if (isAdmin) {
+                    desktopDestinations + desktopAdminDestination
+                } else {
+                    desktopDestinations
+                }
+                visibleDestinations.forEach { destination ->
+                    val selected = currentTopLevelScreen == destination.screen
+                    TextButton(
+                        onClick = { onNavigate(destination.screen) },
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.textButtonColors(
+                            containerColor = if (selected) CrestGold else Color.Transparent,
+                            contentColor = if (selected) CrestBlack else CrestWhite.copy(alpha = 0.78f)
+                        ),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = destination.label,
+                            fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold
+                        )
+                    }
+                }
+
+                TextButton(
+                    onClick = onLogout,
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = CrestWhite.copy(alpha = 0.78f)
+                    )
+                ) {
+                    Text("Salir", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = CrestGold.copy(alpha = 0.65f)
         )
     }
 }
