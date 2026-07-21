@@ -4,6 +4,8 @@ import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.logging.logSupabaseFailure
 import com.brokechango.hattitriki.core.logging.logSupabaseRequest
 import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
+import com.brokechango.hattitriki.core.supabase.SupabaseErrorMessages
+import com.brokechango.hattitriki.core.supabase.toSupabaseUserMessage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -146,7 +148,7 @@ class AdminMatchRepository internal constructor(
         } catch (exception: Exception) {
             logSupabaseFailure("Cargar plantilla activa", exception)
             LoadPlayersResult.Failure(
-                activePlayersLoadErrorMessage(exception.message)
+                activePlayersLoadErrorMessage(exception)
             )
         }
     }
@@ -172,7 +174,7 @@ class AdminMatchRepository internal constructor(
         } catch (exception: Exception) {
             logSupabaseFailure("Guardar acta", exception)
             CreateMatchResult.Failure(
-                matchSaveErrorMessage(exception.message)
+                matchSaveErrorMessage(exception)
             )
         }
     }
@@ -188,7 +190,7 @@ class AdminMatchRepository internal constructor(
             AdminMatchesResult.Success(matches)
         } catch (exception: Exception) {
             logSupabaseFailure("Cargar partidos de administración", exception)
-            AdminMatchesResult.Failure(exception.message ?: "No se han podido cargar los partidos.")
+            AdminMatchesResult.Failure(adminMatchesLoadErrorMessage(exception))
         }
     }
 
@@ -214,7 +216,7 @@ class AdminMatchRepository internal constructor(
             )
         } catch (exception: Exception) {
             logSupabaseFailure("Cargar acta", exception)
-            LoadMatchResult.Failure(exception.message ?: "No se ha podido cargar el acta.")
+            LoadMatchResult.Failure(matchLoadErrorMessage(exception))
         }
     }
 
@@ -239,7 +241,7 @@ class AdminMatchRepository internal constructor(
             EditMatchResult.Success
         } catch (exception: Exception) {
             logSupabaseFailure("Actualizar acta", exception)
-            EditMatchResult.Failure(exception.message ?: "No se ha podido actualizar el acta.")
+            EditMatchResult.Failure(matchUpdateErrorMessage(exception))
         }
     }
 
@@ -252,27 +254,69 @@ class AdminMatchRepository internal constructor(
             EditMatchResult.Success
         } catch (exception: Exception) {
             logSupabaseFailure("Borrar acta", exception)
-            EditMatchResult.Failure(exception.message ?: "No se ha podido borrar el partido.")
+            EditMatchResult.Failure(matchDeleteErrorMessage(exception))
         }
     }
 
     suspend fun hasActiveAdminSession(): Boolean = authRepository.hasActiveAdminSession()
 }
 
-internal fun activePlayersLoadErrorMessage(errorDetails: String?): String =
-    supabaseMessage(
-        errorDetails = errorDetails,
-        setupMessage = "La configuración de jugadores en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
-        permissionMessage = "No tienes permisos para consultar jugadores. Vuelve a iniciar sesión como administrador.",
-        connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
-        fallbackMessage = "No se ha podido cargar la plantilla. Inténtalo de nuevo."
+internal fun activePlayersLoadErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de jugadores en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para consultar jugadores. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido cargar la plantilla. Inténtalo de nuevo."
+        )
     )
 
-internal fun matchSaveErrorMessage(errorDetails: String?): String =
-    supabaseMessage(
-        errorDetails = errorDetails,
-        setupMessage = "La configuración para guardar actas en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
-        permissionMessage = "No tienes permisos para guardar el acta. Vuelve a iniciar sesión como administrador.",
-        connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
-        fallbackMessage = "No se ha podido guardar el acta del partido. Inténtalo de nuevo."
+internal fun matchSaveErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración para guardar actas en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para guardar el acta. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido guardar el acta del partido. Inténtalo de nuevo."
+        )
+    )
+
+internal fun adminMatchesLoadErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de partidos en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para consultar partidos. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se han podido cargar los partidos. Inténtalo de nuevo."
+        )
+    )
+
+internal fun matchLoadErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de partidos en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para consultar el acta. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido cargar el acta. Inténtalo de nuevo."
+        )
+    )
+
+internal fun matchUpdateErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración para guardar actas en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para actualizar el acta. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido actualizar el acta. Inténtalo de nuevo."
+        )
+    )
+
+internal fun matchDeleteErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de partidos en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para borrar partidos. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido borrar el partido. Inténtalo de nuevo."
+        )
     )

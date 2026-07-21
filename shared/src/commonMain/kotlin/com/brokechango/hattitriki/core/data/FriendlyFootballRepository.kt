@@ -10,6 +10,8 @@ import com.brokechango.hattitriki.core.model.PenaltyShootout
 import com.brokechango.hattitriki.core.model.Player
 import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.core.model.TeamSide
+import com.brokechango.hattitriki.core.supabase.SupabaseErrorMessages
+import com.brokechango.hattitriki.core.supabase.toSupabaseUserMessage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -58,7 +60,7 @@ class SupabaseFriendlyFootballRepository(
         )
     } catch (exception: Exception) {
         logSupabaseFailure("Cargar datos de la liga", exception)
-        FootballSnapshotResult.Failure(publicLeagueLoadErrorMessage(exception.message))
+        FootballSnapshotResult.Failure(publicLeagueLoadErrorMessage(exception))
     }
 }
 
@@ -204,10 +206,12 @@ internal fun FootballSnapshot.goalsAgainstShareByGoalkeeperId(): Map<String, Dou
     return goalsAgainst
 }
 
-internal fun publicLeagueLoadErrorMessage(errorDetails: String?): String = supabaseMessage(
-    errorDetails = errorDetails,
-    setupMessage = "La lectura privada de la liga no está configurada. Aplica la última migración de Supabase.",
-    permissionMessage = "No tienes permisos para consultar los datos de la liga.",
-    connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
-    fallbackMessage = "No se han podido cargar los datos de la liga. Inténtalo de nuevo."
-)
+internal fun publicLeagueLoadErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La lectura privada de la liga no está configurada. Aplica la última migración de Supabase.",
+            permissionMessage = "No tienes permisos para consultar los datos de la liga.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se han podido cargar los datos de la liga. Inténtalo de nuevo."
+        )
+    )

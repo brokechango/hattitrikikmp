@@ -4,6 +4,8 @@ import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.logging.logSupabaseFailure
 import com.brokechango.hattitriki.core.logging.logSupabaseRequest
 import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
+import com.brokechango.hattitriki.core.supabase.SupabaseErrorMessages
+import com.brokechango.hattitriki.core.supabase.toSupabaseUserMessage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
@@ -65,7 +67,7 @@ class AdminPlayerRepository internal constructor(
         } catch (exception: Exception) {
             logSupabaseFailure("Crear jugador", exception)
             CreatePlayerResult.Failure(
-                playerSaveErrorMessage(exception.message)
+                playerSaveErrorMessage(exception)
             )
         }
     }
@@ -81,7 +83,7 @@ class AdminPlayerRepository internal constructor(
             AdminPlayersResult.Success(players)
         } catch (exception: Exception) {
             logSupabaseFailure("Cargar jugadores de administración", exception)
-            AdminPlayersResult.Failure(exception.message ?: "No se han podido cargar los jugadores.")
+            AdminPlayersResult.Failure(adminPlayersLoadErrorMessage(exception))
         }
     }
 
@@ -94,7 +96,7 @@ class AdminPlayerRepository internal constructor(
             EditPlayerResult.Success
         } catch (exception: Exception) {
             logSupabaseFailure("Actualizar jugador", exception)
-            EditPlayerResult.Failure(playerSaveErrorMessage(exception.message))
+            EditPlayerResult.Failure(playerSaveErrorMessage(exception))
         }
     }
 
@@ -112,7 +114,7 @@ class AdminPlayerRepository internal constructor(
                 if ("Player has match history" in message) {
                     "No se puede borrar un jugador que ya tiene historial de partidos."
                 } else {
-                    playerSaveErrorMessage(message)
+                    playerDeleteErrorMessage(exception)
                 }
             )
         }
@@ -122,36 +124,33 @@ class AdminPlayerRepository internal constructor(
 }
 
 /** Keeps PostgREST and database implementation details out of the UI. */
-internal fun playerSaveErrorMessage(errorDetails: String?): String {
-    return supabaseMessage(
-        errorDetails = errorDetails,
+internal fun playerSaveErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
         setupMessage = "La configuración de jugadores en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
         permissionMessage = "No tienes permisos para añadir jugadores. Vuelve a iniciar sesión como administrador.",
         connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
-        fallbackMessage = "No se ha podido guardar el jugador. Inténtalo de nuevo."
+        fallbackMessage = "No se ha podido guardar el jugador. Inténtalo de nuevo.",
+        conflictMessage = "Ya existe un jugador con ese nombre."
     )
-}
+)
 
-/** Keeps PostgREST and database implementation details out of the UI. */
-internal fun supabaseMessage(
-    errorDetails: String?,
-    setupMessage: String,
-    permissionMessage: String,
-    connectionMessage: String,
-    fallbackMessage: String
-): String {
-    val details = errorDetails.orEmpty()
-    val normalizedDetails = details.lowercase()
+internal fun adminPlayersLoadErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de jugadores en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para consultar jugadores. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se han podido cargar los jugadores. Inténtalo de nuevo."
+        )
+    )
 
-    return when {
-        "pgrst202" in normalizedDetails || "pgrst205" in normalizedDetails -> setupMessage
-        "permission denied" in normalizedDetails ||
-            "not authorized" in normalizedDetails ||
-            "42501" in details ||
-            "jwt" in normalizedDetails -> permissionMessage
-        "network" in normalizedDetails ||
-            "timeout" in normalizedDetails ||
-            "connect" in normalizedDetails -> connectionMessage
-        else -> fallbackMessage
-    }
-}
+internal fun playerDeleteErrorMessage(error: Throwable): String =
+    error.toSupabaseUserMessage(
+        SupabaseErrorMessages(
+            setupMessage = "La configuración de jugadores en Supabase no está lista. Aplica la última migración y vuelve a intentarlo.",
+            permissionMessage = "No tienes permisos para borrar jugadores. Vuelve a iniciar sesión como administrador.",
+            connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
+            fallbackMessage = "No se ha podido borrar el jugador. Inténtalo de nuevo."
+        )
+    )

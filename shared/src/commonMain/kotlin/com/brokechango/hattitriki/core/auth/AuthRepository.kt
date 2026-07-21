@@ -3,6 +3,9 @@ package com.brokechango.hattitriki.core.auth
 import com.brokechango.hattitriki.core.logging.logSupabaseFailure
 import com.brokechango.hattitriki.core.logging.logSupabaseRequest
 import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
+import com.brokechango.hattitriki.core.supabase.SupabaseErrorMessages
+import com.brokechango.hattitriki.core.supabase.supabaseErrorCode
+import com.brokechango.hattitriki.core.supabase.toSupabaseUserMessage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -133,7 +136,7 @@ class AuthRepository internal constructor(
             }
         } catch (exception: Exception) {
             logSupabaseFailure("Comprobar acceso a la liga", exception)
-            LeagueAccessResult.Failure(accessErrorMessage(exception.message))
+            LeagueAccessResult.Failure(accessErrorMessage(exception))
         }
     }
 
@@ -142,40 +145,56 @@ class AuthRepository internal constructor(
 
     companion object {
         fun loginErrorMessage(exception: Throwable): String {
-            val details = exception.message.orEmpty()
-            val invalidCredentials = details.contains("invalid_credentials", ignoreCase = true) ||
-                details.contains("invalid login credentials", ignoreCase = true)
-
-            return if (invalidCredentials) {
-                "Usuario o contraseña inválidos."
-            } else {
-                "No se ha podido iniciar sesión. Comprueba tu conexión e inténtalo de nuevo."
+            return when (exception.supabaseErrorCode()?.lowercase()) {
+                "invalid_credentials" -> "Usuario o contraseña inválidos."
+                "email_not_confirmed" -> "Confirma tu correo antes de iniciar sesión."
+                else -> exception.toSupabaseUserMessage(
+                    SupabaseErrorMessages(
+                        setupMessage = "El acceso de Supabase no está configurado correctamente en este dispositivo.",
+                        permissionMessage = "Usuario o contraseña inválidos.",
+                        connectionMessage = "No se ha podido iniciar sesión. Comprueba tu conexión e inténtalo de nuevo.",
+                        fallbackMessage = "No se ha podido iniciar sesión. Inténtalo de nuevo."
+                    )
+                )
             }
         }
 
         fun invitationErrorMessage(exception: Throwable): String {
-            val details = exception.message.orEmpty()
-            val weakPassword = details.contains("weak_password", ignoreCase = true) ||
-                details.contains("password", ignoreCase = true) &&
-                details.contains("weak", ignoreCase = true)
-
-            return if (weakPassword) {
-                "La contraseña no cumple la política de seguridad de la liga."
-            } else {
-                "No se ha podido guardar la contraseña. Comprueba tu conexión e inténtalo de nuevo."
+            return when (exception.supabaseErrorCode()?.lowercase()) {
+                "weak_password" -> "La contraseña no cumple la política de seguridad de la liga."
+                "same_password" -> "La nueva contraseña debe ser distinta de la anterior."
+                "session_not_found", "session_expired", "flow_state_not_found", "flow_state_expired" ->
+                    "El enlace de invitación no es válido o ha caducado. Solicita uno nuevo."
+                else -> exception.toSupabaseUserMessage(
+                    SupabaseErrorMessages(
+                        setupMessage = "El acceso de Supabase no está configurado correctamente en este dispositivo.",
+                        permissionMessage = "El enlace de invitación no es válido o ha caducado. Solicita uno nuevo.",
+                        connectionMessage = "No se ha podido guardar la contraseña. Comprueba tu conexión e inténtalo de nuevo.",
+                        fallbackMessage = "No se ha podido guardar la contraseña. Inténtalo de nuevo."
+                    )
+                )
             }
         }
 
-        internal fun accessErrorMessage(details: String?): String {
-            val normalized = details.orEmpty().lowercase()
-            return when {
-                "pgrst202" in normalized || "get_current_user_access" in normalized ->
-                    "La protección de miembros todavía no está configurada. Aplica la última migración de Supabase."
-                "network" in normalized || "timeout" in normalized || "connect" in normalized ->
-                    "No se ha podido comprobar tu acceso. Revisa la conexión e inténtalo de nuevo."
-                else -> "No se ha podido comprobar tu acceso a la liga. Inténtalo de nuevo."
-            }
-        }
+        fun signOutErrorMessage(exception: Throwable): String =
+            exception.toSupabaseUserMessage(
+                SupabaseErrorMessages(
+                    setupMessage = "El acceso de Supabase no está configurado correctamente en este dispositivo.",
+                    permissionMessage = "La sesión ya se ha cerrado en este dispositivo.",
+                    connectionMessage = "No se ha podido cerrar la sesión. Comprueba tu conexión e inténtalo de nuevo.",
+                    fallbackMessage = "No se ha podido cerrar la sesión. Inténtalo de nuevo."
+                )
+            )
+
+        internal fun accessErrorMessage(error: Throwable): String =
+            error.toSupabaseUserMessage(
+                SupabaseErrorMessages(
+                    setupMessage = "La protección de miembros todavía no está configurada. Aplica la última migración de Supabase.",
+                    permissionMessage = "Tu sesión ya no es válida. Vuelve a iniciar sesión.",
+                    connectionMessage = "No se ha podido comprobar tu acceso. Revisa la conexión e inténtalo de nuevo.",
+                    fallbackMessage = "No se ha podido comprobar tu acceso a la liga. Inténtalo de nuevo."
+                )
+            )
     }
 
     private fun resolvePasswordSetup() {

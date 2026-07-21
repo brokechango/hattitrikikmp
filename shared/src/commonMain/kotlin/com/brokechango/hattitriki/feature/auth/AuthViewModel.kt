@@ -270,7 +270,7 @@ class AuthViewModel(
                 .onFailure { exception ->
                     _uiState.value = _uiState.value.copy(
                         gateState = AuthGateState.AccessError(
-                            exception.message ?: "No se ha podido cerrar la sesión."
+                            AuthRepository.signOutErrorMessage(exception)
                         )
                     )
                 }
