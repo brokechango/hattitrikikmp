@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.brokechango.hattitriki.getPlatform
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavyLight
 import com.brokechango.hattitriki.core.design.CrestRed
@@ -280,20 +281,29 @@ private fun RankingTable(
     modifier: Modifier = Modifier
 ) {
     FootballCard(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            RankingTableHeader(category = category)
-            rankings.forEachIndexed { index, ranking ->
-                RankingRow(
-                    index = index,
-                    ranking = ranking,
+        BoxWithConstraints {
+            val showInlineRecentForm = showRecentForm &&
+                getPlatform().name == "Web" &&
+                maxWidth >= 980.dp
+            Column(modifier = Modifier.fillMaxWidth()) {
+                RankingTableHeader(
                     category = category,
-                    showRecentForm = showRecentForm
+                    showInlineRecentForm = showInlineRecentForm
                 )
-                if (index < rankings.lastIndex) {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+                rankings.forEachIndexed { index, ranking ->
+                    RankingRow(
+                        index = index,
+                        ranking = ranking,
+                        category = category,
+                        showRecentForm = showRecentForm,
+                        showInlineRecentForm = showInlineRecentForm
                     )
+                    if (index < rankings.lastIndex) {
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f)
+                        )
+                    }
                 }
             }
         }
@@ -301,7 +311,10 @@ private fun RankingTable(
 }
 
 @Composable
-private fun RankingTableHeader(category: PlayerRankingCategory) {
+private fun RankingTableHeader(
+    category: PlayerRankingCategory,
+    showInlineRecentForm: Boolean
+) {
     val isPlayerOnForm = category == PlayerRankingCategory.PLAYER_ON_FORM
     Row(
         modifier = Modifier
@@ -317,6 +330,9 @@ private fun RankingTableHeader(category: PlayerRankingCategory) {
         TableLabel(if (isPlayerOnForm) "GC" else "E", Modifier.width(28.dp), TextAlign.Center)
         TableLabel(if (isPlayerOnForm) "V" else "D", Modifier.width(28.dp), TextAlign.Center)
         TableLabel(rankingMetricLabel(category), Modifier.width(54.dp), TextAlign.End)
+        if (showInlineRecentForm) {
+            TableLabel("RACHA", Modifier.width(168.dp), TextAlign.Start)
+        }
     }
 }
 
@@ -325,7 +341,8 @@ private fun RankingRow(
     index: Int,
     ranking: PlayerRankingEntry,
     category: PlayerRankingCategory,
-    showRecentForm: Boolean
+    showRecentForm: Boolean,
+    showInlineRecentForm: Boolean
 ) {
     val stats = ranking.stats
     val rank = index + 1
@@ -369,8 +386,14 @@ private fun RankingRow(
                 color = CrestGold,
                 fontWeight = FontWeight.Black
             )
+            if (showInlineRecentForm) {
+                RecentForm(
+                    results = ranking.recentForm,
+                    modifier = Modifier.width(168.dp)
+                )
+            }
         }
-        if (showRecentForm) {
+        if (showRecentForm && !showInlineRecentForm) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
