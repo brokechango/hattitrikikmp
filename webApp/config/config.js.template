@@ -1,0 +1,4 @@
+globalThis.HATTITRIKI_CONFIG = Object.freeze({
+  supabaseUrl: "${supabaseUrl}",
+  supabasePublishableKey: "${supabasePublishableKey}"
+});

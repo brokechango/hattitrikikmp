@@ -1,0 +1,129 @@
+name: Web CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Test and build web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Java 17
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@90ddb51e90a5fd9ba75f40cf85156b7b41bf76a3 # v6
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Validate deployment configuration
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          if [[ -z "$SUPABASE_URL" || -z "$SUPABASE_PUBLISHABLE_KEY" ]]; then
+            echo "Configure SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY as repository variables."
+            exit 1
+          fi
+
+      - name: Run tests and build production web bundle
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: >-
+          ./gradlew
+          :shared:testAndroidHostTest
+          :webApp:wasmJsBrowserDistribution
+          --no-daemon
+          --stacktrace
+
+      - name: Verify production artifact
+        shell: bash
+        run: |
+          dist="webApp/build/dist/wasmJs/productionExecutable"
+          test -f "$dist/index.html"
+          test -f "$dist/config.js"
+          test -f "$dist/_headers"
+          test -f "$dist/hattitriki.js"
+          test -f "$dist/bootstrap.js"
+          test -f "$dist/app.css"
+          grep -q "Content-Security-Policy" "$dist/index.html"
+
+          if find "$dist" -type f -name '*.map' -print -quit | grep -q .; then
+            echo "Production source maps must not be deployed."
+            exit 1
+          fi
+
+      - name: Upload production artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: web-production
+          path: webApp/build/dist/wasmJs/productionExecutable
+          if-no-files-found: error
+          retention-days: 1
+
+  deploy:
+    name: Deploy Cloudflare Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      deployments: write
+    concurrency:
+      group: cloudflare-pages-production
+      cancel-in-progress: false
+    environment:
+      name: cloudflare-pages
+      url: ${{ steps.deploy.outputs.deployment-url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Download production artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: web-production
+          path: dist
+
+      - name: Validate Cloudflare configuration
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_PAGES_PROJECT: ${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+        run: |
+          if [[ -z "$CLOUDFLARE_API_TOKEN" || -z "$CLOUDFLARE_ACCOUNT_ID" || -z "$CLOUDFLARE_PAGES_PROJECT" ]]; then
+            echo "Configure CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_PAGES_PROJECT."
+            exit 1
+          fi
+
+      - name: Deploy artifact to Cloudflare Pages
+        id: deploy
+        uses: cloudflare/wrangler-action@ebbaa1584979971c8614a24965b4405ff95890e0 # v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.112.0"
+          command: pages deploy dist --project-name=${{ vars.CLOUDFLARE_PAGES_PROJECT }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

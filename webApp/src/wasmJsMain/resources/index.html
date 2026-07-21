@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'self'; base-uri 'none'; object-src 'none'; form-action 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co; worker-src 'self' blob:; manifest-src 'self'; media-src 'self'"
+    >
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#081A32">
+    <meta name="referrer" content="no-referrer">
+    <meta
+        name="description"
+        content="Resultados, estadísticas y gestión de la liga Hattitriki."
+    >
+    <meta name="robots" content="index, follow">
+    <title>Hattitriki</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="app.css">
+    <link
+        rel="preload"
+        href="composeResources/hattitriki.shared.generated.resources/drawable/hattitriki_app_icon.png"
+        as="image"
+        fetchpriority="high"
+    >
+    <script src="config.js" defer></script>
+    <script src="bootstrap.js" defer></script>
+</head>
+<body>
+    <noscript>Hattitriki necesita JavaScript para funcionar.</noscript>
+    <main
+        id="app-loading"
+        aria-busy="false"
+        aria-label="Acceso a Hattitriki"
+    >
+        <form id="bootstrap-login" class="loading-card" novalidate>
+            <img
+                class="loading-crest"
+                src="composeResources/hattitriki.shared.generated.resources/drawable/hattitriki_app_icon.png"
+                width="320"
+                height="320"
+                alt=""
+            >
+            <h1>HATTITRIKI FC</h1>
+            <p class="loading-description">Acceso privado para miembros de la liga</p>
+            <div class="loading-form">
+                <label class="visually-hidden" for="bootstrap-email">Correo electrónico</label>
+                <input
+                    id="bootstrap-email"
+                    class="loading-field"
+                    name="email"
+                    type="email"
+                    inputmode="email"
+                    autocomplete="email"
+                    placeholder="Correo electrónico"
+                    required
+                >
+                <label class="visually-hidden" for="bootstrap-password">Contraseña</label>
+                <input
+                    id="bootstrap-password"
+                    class="loading-field"
+                    name="password"
+                    type="password"
+                    autocomplete="current-password"
+                    placeholder="Contraseña"
+                    required
+                >
+                <button id="bootstrap-submit" class="loading-button" type="submit" disabled>
+                    Entrar
+                </button>
+            </div>
+            <p class="loading-status" role="status" aria-live="polite"></p>
+        </form>
+    </main>
+    <div id="composeApp" role="application" aria-label="Aplicación Hattitriki"></div>
+</body>
+</html>

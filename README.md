@@ -2,9 +2,9 @@
 
 Aplicación multiplataforma para llevar los resultados, estadísticas y clasificaciones de una liga de fútbol amistosa.
 
-Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfaz y la lógica entre Android e iOS. Los resultados y clasificaciones se consultan en Supabase.
+Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfaz y la lógica entre Android, iOS y web. Los resultados y clasificaciones se consultan en Supabase.
 
-> Estado: en desarrollo. La consulta pública y la zona de administración usan Supabase; los administradores pueden crear actas completas y dar de alta jugadores.
+> Estado: en desarrollo. Toda la liga requiere una cuenta activa de Supabase; los administradores pueden crear actas completas y dar de alta jugadores.
 
 ## Funcionalidades
 
@@ -12,9 +12,10 @@ Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfa
 - Histórico de partidos y acceso al acta de cada encuentro.
 - Clasificaciones de jugadores por estadísticas.
 - Detalle de partidos, goles y participación de porteros.
-- Zona míster con login de Supabase, creación de actas completas y altas de jugadores para administradores.
+- Login previo a la aplicación para miembros activos de la liga.
+- Zona míster visible solo para administradores, con creación de actas completas y altas de jugadores.
 - Navegación con animaciones y estado restaurable.
-- Interfaz compartida para Android e iOS.
+- Interfaz compartida para Android, iOS y navegador mediante Kotlin/Wasm.
 
 ## Tecnologías
 
@@ -32,6 +33,7 @@ Construida con Kotlin Multiplatform y Compose Multiplatform, comparte la interfa
 androidApp/  Aplicación Android y configuración de Firebase
 iosApp/      Contenedor nativo de iOS en SwiftUI/Xcode
 shared/      UI, navegación, modelos, datos y lógica compartida
+webApp/      Entrada web, recursos HTML/CSS y configuración Kotlin/Wasm
 ```
 
 El código común vive principalmente en `shared/src/commonMain`. Las implementaciones específicas de cada plataforma se mantienen en `androidMain` e `iosMain`.
@@ -58,7 +60,7 @@ Antes de compilar Android, añade estos archivos locales; no se versionan para p
    ```
 
 3. Comprueba que `local.properties` indique la ruta de tu Android SDK. Android Studio lo crea normalmente de forma automática.
-4. Para habilitar el login de administrador en Android, añade también estas dos líneas a `local.properties`:
+4. Para habilitar el acceso de miembros en Android, añade también estas dos líneas a `local.properties`:
 
    ```properties
    SUPABASE_URL=https://tu-proyecto.supabase.co
@@ -67,11 +69,34 @@ Antes de compilar Android, añade estos archivos locales; no se versionan para p
 
    En iOS, crea el archivo local no versionado `iosApp/Configuration/Supabase.xcconfig` con el mismo contenido. Usa la publishable key (o la anon key heredada), nunca `service_role` ni una clave secreta.
 
+   El build web lee esos mismos valores. También se pueden proporcionar mediante las variables de entorno `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`, o como propiedades Gradle con `-PSUPABASE_URL=...` y `-PSUPABASE_PUBLISHABLE_KEY=...`. El orden de prioridad es: variable de entorno, propiedad Gradle y `local.properties`.
+
 No incluyas estos archivos ni sus valores en commits o incidencias públicas.
 
 ### Base de datos de partidos programados
 
-Antes de usar la app, aplica en orden `supabase/migrations/20260716140000_admin_acta_functions.sql`, `supabase/migrations/20260716150000_admin_edit_delete_functions.sql`, `supabase/migrations/20260716160000_multiple_goalkeepers_per_match.sql`, `supabase/migrations/20260716170000_own_goals.sql`, `supabase/migrations/20260716180000_players_can_participate_in_both_teams.sql`, `supabase/migrations/20260716190000_fix_own_goal_team_validation.sql`, `supabase/migrations/20260716200000_penalty_shootouts.sql`, `supabase/migrations/20260716210000_cast_acta_team_side.sql` y `supabase/migrations/20260716220000_public_league_read_functions.sql` en el SQL Editor de tu proyecto Supabase o con la CLI de Supabase. Las RPC públicas exponen solo resultados, alineaciones, goles y nombres de jugadores; las RPC de administración comprueban el rol `admin` y permiten crear, editar y borrar actas o jugadores. El cliente nunca usa una clave `service_role`.
+Antes de usar la app, aplica en orden todas las migraciones de `supabase/migrations/`, incluida `20260721120000_private_league_membership.sql`, mediante el SQL Editor o la CLI de Supabase. La última migración exige un perfil activo para consultar resultados, alineaciones, goles y jugadores; las RPC de administración exigen además el rol `admin`. También activa RLS, retira el acceso directo a las tablas y revoca las lecturas a `anon`. El cliente nunca usa una clave `service_role`.
+
+Desactiva el registro público de usuarios en Supabase Auth y crea o invita una cuenta individual para cada miembro. Las cuentas nuevas reciben un perfil inactivo: actívalo como `member` o `admin` con los ejemplos incluidos al final de `20260721120000_private_league_membership.sql`. La autorización real permanece en PostgreSQL; ocultar botones en la interfaz no concede ni sustituye permisos.
+
+### Invitaciones por correo
+
+1. En Supabase, configura **Authentication → URL Configuration → Site URL** con la raíz HTTPS permanente de la web. No uses un túnel temporal. Añade esa misma raíz a **Redirect URLs**.
+2. Mantén `{{ .ConfirmationURL }}` en la plantilla **Authentication → Email Templates → Invite user**.
+3. Envía la invitación desde **Authentication → Users → Add user → Send invitation**.
+4. Activa después el perfil creado por el trigger, eligiendo el rol apropiado:
+
+   ```sql
+   update public.profiles
+   set role = 'member', is_active = true
+   where id = (
+       select id
+       from auth.users
+       where lower(email) = lower('usuario@ejemplo.com')
+   );
+   ```
+
+Al abrir el enlace, Supabase redirige a la raíz web con una sesión de invitación. Hattitriki la detecta antes de comprobar la membresía, solicita una contraseña de al menos ocho caracteres y la guarda en Auth. El estado pendiente vive solo en `sessionStorage` y se elimina al completar o cancelar el proceso. Si el perfil todavía está inactivo, la contraseña queda configurada, pero la app cierra la sesión hasta que un administrador lo active.
 
 ## Ejecutar el proyecto
 
@@ -88,6 +113,55 @@ El APK resultante se genera en `androidApp/build/outputs/apk/debug/`.
 ### iOS
 
 En macOS, abre `iosApp` con Xcode y ejecuta el esquema `iosApp` en un simulador o dispositivo compatible.
+
+### Web
+
+Para arrancar el servidor de desarrollo y abrir Hattitriki en el navegador:
+
+```powershell
+.\gradlew.bat :webApp:wasmJsBrowserDevelopmentRun
+```
+
+Para generar los archivos estáticos optimizados para producción:
+
+```powershell
+.\gradlew.bat :webApp:wasmJsBrowserDistribution
+```
+
+El bundle se genera bajo `webApp/build/dist/wasmJs/productionExecutable/` y puede desplegarse en cualquier alojamiento de archivos estáticos. La tarea genera `config.js` a partir de la configuración local o del entorno; la publishable key de Supabase está diseñada para clientes públicos, pero nunca debe sustituirse por una clave `service_role` o secreta. El build rechaza claves `sb_secret_` y JWT con rol `service_role`.
+
+La versión web aplica una política CSP estricta, no publica mapas de fuentes y guarda la sesión del miembro en `sessionStorage`: la sesión deja de persistir al cerrar la pestaña. El archivo `_headers` del bundle configura CSP, HSTS, protección frente a iframes, política de permisos y `nosniff` en Netlify, Cloudflare Pages y alojamientos compatibles. Si el proveedor ignora `_headers`, replica esas cabeceras en su configuración; HSTS solo debe activarse en un dominio servido siempre por HTTPS.
+
+Para revisar localmente el bundle con compresión Brotli, cabeceras de caché y una configuración similar a producción:
+
+```powershell
+node webApp/preview.mjs
+```
+
+La vista previa queda disponible en `http://127.0.0.1:8767`. En el alojamiento definitivo deben conservarse la compresión, las cabeceras de seguridad y las cabeceras de caché para los archivos `.wasm` y JavaScript.
+
+La auditoría Lighthouse debe ejecutarse contra esa build de producción, no contra el servidor de desarrollo:
+
+```powershell
+npx lighthouse http://127.0.0.1:8767 --preset=desktop --view
+```
+
+También se puede abrir DevTools, elegir Lighthouse, modo `Navigation` y dispositivo `Desktop`.
+
+### CI/CD web con Cloudflare Pages
+
+El workflow `.github/workflows/web-cicd.yml` ejecuta las pruebas y genera la build web en cada pull request dirigido a `main`. Los pushes a `main` y las ejecuciones manuales desde esa rama publican el resultado en Cloudflare Pages mediante Direct Upload. Las credenciales de despliegue no se exponen en los workflows de pull requests.
+
+Antes del primer despliegue:
+
+1. En Cloudflare, crea un proyecto de Pages con **Direct Upload**, configura `main` como rama de producción y anota el nombre del proyecto y el Account ID.
+2. Crea un API token de Cloudflare limitado a tu cuenta con el permiso `Account → Cloudflare Pages → Edit`.
+3. En `Settings → Secrets and variables → Actions → Secrets`, crea `CLOUDFLARE_API_TOKEN`.
+4. En `Settings → Secrets and variables → Actions → Variables`, crea `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT`, `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`. Los valores de Supabase son públicos para el cliente; nunca configures `service_role` ni `sb_secret_`.
+5. Crea y protege el entorno de GitHub `cloudflare-pages` para permitir despliegues únicamente desde `main`.
+6. Aplica todas las migraciones de Supabase, especialmente `20260721120000_private_league_membership.sql`.
+
+Cloudflare Pages interpreta el archivo `_headers` incluido en el bundle, por lo que el despliegue aplica CSP, HSTS, `nosniff`, protección frente a iframes y la política de permisos configurada por la aplicación.
 
 ## Pruebas
 
