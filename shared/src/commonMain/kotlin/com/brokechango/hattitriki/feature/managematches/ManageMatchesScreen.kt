@@ -24,6 +24,7 @@ import com.brokechango.hattitriki.core.data.AdminMatchesResult
 import com.brokechango.hattitriki.core.data.EditMatchResult
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -104,7 +105,10 @@ fun ManageMatchesScreen(
             subtitle = "Edita o borra actas y sus datos asociados."
         )
         when {
-            uiState.isLoading -> Text("Cargando partidos…")
+            uiState.isLoading -> SupabaseLoadingState(
+                message = "Cargando los partidos…",
+                compact = true
+            )
             !uiState.isAdmin -> Text(uiState.errorMessage ?: "Inicia sesión como administrador desde la Zona míster.")
             else -> {
                 uiState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }

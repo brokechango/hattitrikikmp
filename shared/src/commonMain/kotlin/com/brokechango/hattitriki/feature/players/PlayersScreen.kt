@@ -1,9 +1,13 @@
 package com.brokechango.hattitriki.feature.players
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -42,6 +44,9 @@ import com.brokechango.hattitriki.core.design.CrestRed
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.icons.rankingEmojiResource
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun PlayersScreen(
@@ -57,15 +62,19 @@ fun PlayersScreen(
         viewModel.refresh()
     }
 
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
-    ) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val useExpandedFilters = maxWidth >= 900.dp
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
         ScreenTitle(
             title = "Clasificaciones"
         )
         if (uiState.isLoading) {
-            Text("Cargando clasificaciones…")
+            SupabaseLoadingState(message = "Cargando las clasificaciones…")
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -76,14 +85,17 @@ fun PlayersScreen(
             category = uiState.selectedCategory,
             playerCount = uiState.rankings.size
         )
-        FiltersToggle(
-            areFiltersVisible = areFiltersVisible,
-            onClick = { areFiltersVisible = !areFiltersVisible }
-        )
-        if (areFiltersVisible) {
+        if (!useExpandedFilters) {
+            FiltersToggle(
+                areFiltersVisible = areFiltersVisible,
+                onClick = { areFiltersVisible = !areFiltersVisible }
+            )
+        }
+        if (useExpandedFilters || areFiltersVisible) {
             CategoryFilters(
                 categories = categories,
                 selectedCategory = uiState.selectedCategory,
+                columns = if (useExpandedFilters) 4 else 2,
                 onCategorySelected = { category -> onEvent(PlayersEvent.SelectCategory(category)) }
             )
         }
@@ -95,10 +107,9 @@ fun PlayersScreen(
             category = uiState.selectedCategory,
             rankings = uiState.rankings,
             showRecentForm = uiState.rankingView == RankingView.DETAILED,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
+            modifier = Modifier.fillMaxWidth()
         )
+    }
     }
 }
 
@@ -181,9 +192,10 @@ private fun RankingSummary(
                     .background(CrestGold),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = category.icon,
-                    style = MaterialTheme.typography.titleLarge
+                Image(
+                    painter = painterResource(category.rankingEmojiResource),
+                    contentDescription = category.title,
+                    modifier = Modifier.size(28.dp)
                 )
             }
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -213,6 +225,7 @@ private fun RankingSummary(
 private fun CategoryFilters(
     categories: List<PlayerRankingCategory>,
     selectedCategory: PlayerRankingCategory,
+    columns: Int,
     onCategorySelected: (PlayerRankingCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -220,7 +233,7 @@ private fun CategoryFilters(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        categories.chunked(2).forEach { categoryRow ->
+        categories.chunked(columns).forEach { categoryRow ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -251,7 +264,7 @@ private fun CategoryFilters(
                         )
                     )
                 }
-                repeat(2 - categoryRow.size) {
+                repeat(columns - categoryRow.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
@@ -267,14 +280,9 @@ private fun RankingTable(
     modifier: Modifier = Modifier
 ) {
     FootballCard(modifier = modifier) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
-            item(key = "header") {
-                RankingTableHeader(category = category)
-            }
-            itemsIndexed(
-                items = rankings,
-                key = { _, ranking -> ranking.stats.player.id }
-            ) { index, ranking ->
+        Column(modifier = Modifier.fillMaxWidth()) {
+            RankingTableHeader(category = category)
+            rankings.forEachIndexed { index, ranking ->
                 RankingRow(
                     index = index,
                     ranking = ranking,

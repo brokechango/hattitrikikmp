@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
@@ -36,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -46,7 +46,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
@@ -57,6 +56,9 @@ import com.brokechango.hattitriki.ui.composables.HattitrikiPullToRefresh
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.icons.rankingEmojiResource
+import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
 @Composable
@@ -83,7 +85,7 @@ fun HomeScreen(
         )
 
         if (uiState.isLoading) {
-            Text("Cargando datos de la liga…")
+            HomeLoadingState()
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -139,10 +141,22 @@ fun HomeScreen(
         }
 
         if (uiState.latestMatch == null) {
-            Text(
-                "Todavía no hay partidos guardados.",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            FootballCard(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "Aún no hay resultados",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Cuando se guarde el primer partido aparecerá aquí.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         Column(
@@ -176,6 +190,62 @@ fun HomeScreen(
 }
 
 @Composable
+private fun HomeLoadingState(modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val columns = if (maxWidth >= 700.dp) 3 else 2
+        val placeholders = 6
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            SupabaseLoadingState(
+                message = "Cargando los datos de la liga…",
+                compact = true
+            )
+            FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.24f)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(CrestGold.copy(alpha = 0.3f))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.62f)
+                            .height(26.dp)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f))
+                    )
+                }
+            }
+            repeat((placeholders + columns - 1) / columns) { rowIndex ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    repeat(columns) { columnIndex ->
+                        val itemIndex = rowIndex * columns + columnIndex
+                        if (itemIndex < placeholders) {
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(if (columns == 3) 118.dp else 132.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(MaterialTheme.colorScheme.surface)
+                            )
+                        } else {
+                            Box(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun FeaturedStatsGrid(
     stats: List<HomeFeaturedStat>,
     onOpenRanking: (PlayerRankingCategory) -> Unit,
@@ -196,23 +266,25 @@ private fun FeaturedStatsGrid(
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val columns = when {
-            maxWidth >= 900.dp -> 4
-            maxWidth >= 620.dp -> 3
+            maxWidth >= 700.dp -> 3
             else -> 2
         }
         val spacing = 12.dp
-        val cardSize = (maxWidth - spacing * (columns - 1)) / columns
+        val cardWidth = (maxWidth - spacing * (columns - 1)) / columns
+        val cardHeight = if (maxWidth >= 700.dp) 154.dp else cardWidth
         val rows = (orderedStats.size + columns - 1) / columns
         val gridHeight = if (rows == 0) 0.dp else {
-            cardSize * rows + spacing * (rows - 1)
+            cardHeight * rows + spacing * (rows - 1)
         }
         val density = LocalDensity.current
-        val cardSizePx = with(density) { cardSize.toPx() }
-        val stepPx = with(density) { (cardSize + spacing).toPx() }
+        val cardWidthPx = with(density) { cardWidth.toPx() }
+        val cardHeightPx = with(density) { cardHeight.toPx() }
+        val horizontalStepPx = with(density) { (cardWidth + spacing).toPx() }
+        val verticalStepPx = with(density) { (cardHeight + spacing).toPx() }
 
         fun slotOffset(index: Int): Offset = Offset(
-            x = (index % columns) * stepPx,
-            y = (index / columns) * stepPx
+            x = (index % columns) * horizontalStepPx,
+            y = (index / columns) * verticalStepPx
         )
 
         Box(
@@ -222,8 +294,8 @@ private fun FeaturedStatsGrid(
         ) {
             orderedStats.forEachIndexed { index, stat ->
                 key(stat.category) {
-                    val targetX = (cardSize + spacing) * (index % columns)
-                    val targetY = (cardSize + spacing) * (index / columns)
+                    val targetX = (cardWidth + spacing) * (index % columns)
+                    val targetY = (cardHeight + spacing) * (index / columns)
                     val animatedX by animateDpAsState(
                         targetValue = targetX,
                         animationSpec = tween(durationMillis = 180),
@@ -282,14 +354,21 @@ private fun FeaturedStatsGrid(
                                     )
                                 }
                             }
-                            .size(cardSize)
+                            .size(width = cardWidth, height = cardHeight)
                             .zIndex(if (isDragging) 1f else 0f)
                             .graphicsLayer {
                                 scaleX = scale
                                 scaleY = scale
                                 rotationZ = rotation.value
                             }
-                            .pointerInput(stat.category, columns, cardSizePx, stepPx) {
+                            .pointerInput(
+                                stat.category,
+                                columns,
+                                cardWidthPx,
+                                cardHeightPx,
+                                horizontalStepPx,
+                                verticalStepPx
+                            ) {
                                 detectDragGesturesAfterLongPress(
                                     onDragStart = {
                                         draggedCategory = stat.category
@@ -308,10 +387,10 @@ private fun FeaturedStatsGrid(
                                         val oldSlot = slotOffset(currentIndex)
                                         val nextDragOffset = dragOffset + amount
                                         val draggedTopLeft = oldSlot + nextDragOffset
-                                        val targetColumn = (draggedTopLeft.x / stepPx)
+                                        val targetColumn = (draggedTopLeft.x / horizontalStepPx)
                                             .roundToInt()
                                             .coerceIn(0, columns - 1)
-                                        val targetRow = (draggedTopLeft.y / stepPx)
+                                        val targetRow = (draggedTopLeft.y / verticalStepPx)
                                             .roundToInt()
                                             .coerceIn(0, rows - 1)
                                         val targetIndex = (targetRow * columns + targetColumn)
@@ -382,7 +461,7 @@ private fun FeaturedStatCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Bold
                     )
-                    StatIcon(icon = stat.category.icon)
+                    StatIcon(category = stat.category)
                 }
                 Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                     Text(
@@ -423,7 +502,7 @@ private fun FeaturedStatCard(
 
 @Composable
 private fun StatIcon(
-    icon: String,
+    category: PlayerRankingCategory,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -433,10 +512,10 @@ private fun StatIcon(
             .background(CrestGold.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = icon,
-            color = Color.Unspecified,
-            fontSize = 17.sp
+        Image(
+            painter = painterResource(category.rankingEmojiResource),
+            contentDescription = category.title,
+            modifier = Modifier.size(22.dp)
         )
     }
 }

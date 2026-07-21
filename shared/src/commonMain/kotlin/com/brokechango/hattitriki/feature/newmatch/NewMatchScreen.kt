@@ -40,6 +40,7 @@ import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.HattitrikiDatePickerField
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 
 private enum class MatchCreationStep(val label: String) {
     MATCH("Partido"),
@@ -75,9 +76,15 @@ fun NewMatchScreen(
         )
 
         when {
-            uiState.isCheckingAccess -> Text("Comprobando permisos…")
+            uiState.isCheckingAccess -> SupabaseLoadingState(
+                message = "Comprobando permisos…",
+                compact = true
+            )
             !uiState.isAdmin -> AccessDenied(uiState.errorMessage)
-            uiState.isLoadingPlayers -> Text("Cargando plantilla…")
+            uiState.isLoadingPlayers -> SupabaseLoadingState(
+                message = "Cargando la plantilla…",
+                compact = true
+            )
             else -> MatchReportFlow(
                 uiState = uiState,
                 currentStep = currentStep,

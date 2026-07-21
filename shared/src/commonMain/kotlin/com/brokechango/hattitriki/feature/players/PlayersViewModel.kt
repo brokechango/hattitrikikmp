@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.brokechango.hattitriki.core.data.FootballSnapshot
 import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.goalsAgainstShareByGoalkeeperId
 import com.brokechango.hattitriki.core.data.playerStats
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.core.model.PlayerStats
@@ -96,25 +97,26 @@ private data class PreparedRankings(
  */
 private fun FootballSnapshot.prepareRankings(): PreparedRankings {
     val stats = playerStats()
-    val goalsAgainstByPlayerId = matches
+    val assignedGoalsAgainstByPlayerId = matches
         .asSequence()
         .flatMap { it.goals.asSequence() }
         .groupingBy { it.goalkeeperId }
         .fold(0) { total, goal -> total + goal.count }
+    val sharedGoalsAgainstByPlayerId = goalsAgainstShareByGoalkeeperId()
     val recentFormByPlayerId = recentFormByPlayerId()
     val goalkeeperRankings = stats
         .filter { it.goalkeeperMatches > 0 }
-        .map { it to (goalsAgainstByPlayerId[it.player.id] ?: 0) }
+        .map { it to (sharedGoalsAgainstByPlayerId[it.player.id] ?: 0.0) }
 
     fun rankingEntry(stats: PlayerStats, value: String) = PlayerRankingEntry(
         stats = stats,
         value = value,
         recentForm = recentFormByPlayerId[stats.player.id].orEmpty(),
-        goalsAgainst = goalsAgainstByPlayerId[stats.player.id]
+        goalsAgainst = assignedGoalsAgainstByPlayerId[stats.player.id]
     )
 
     fun playerOnFormTotal(stats: PlayerStats): Int {
-        val goalkeeperAdjustment = goalsAgainstByPlayerId[stats.player.id]?.let { goalsAgainst ->
+        val goalkeeperAdjustment = assignedGoalsAgainstByPlayerId[stats.player.id]?.let { goalsAgainst ->
             (stats.goalkeeperMatches * 2 - goalsAgainst).coerceAtLeast(0)
         } ?: 0
 
@@ -135,15 +137,15 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
                 .map { rankingEntry(it, formatPerMatch(it.goals, it.matchesPlayed)) },
             PlayerRankingCategory.ZAMORA to goalkeeperRankings
                 .sortedWith(
-                    compareBy<Pair<PlayerStats, Int>> { it.second }
+                    compareBy<Pair<PlayerStats, Double>> { it.second }
                         .thenByDescending { it.first.goalkeeperMatches }
                         .thenByDescending { it.first.wins }
                 )
-                .map { (stats, goalsAgainst) -> rankingEntry(stats, goalsAgainst.toString()) },
+                .map { (stats, goalsAgainst) -> rankingEntry(stats, formatGoals(goalsAgainst)) },
             PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH to goalkeeperRankings
                 .sortedWith(
-                    compareBy<Pair<PlayerStats, Int>> {
-                        it.second.toDouble() / it.first.goalkeeperMatches
+                    compareBy<Pair<PlayerStats, Double>> {
+                        it.second / it.first.goalkeeperMatches
                     }.thenByDescending { it.first.goalkeeperMatches }
                         .thenByDescending { it.first.wins }
                 )
@@ -162,7 +164,7 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
                     compareByDescending<Pair<PlayerStats, Int>> { it.second }
                         .thenByDescending { it.first.goals }
                         .thenByDescending { it.first.wins }
-                        .thenBy { goalsAgainstByPlayerId[it.first.player.id] ?: Int.MAX_VALUE }
+                        .thenBy { assignedGoalsAgainstByPlayerId[it.first.player.id] ?: Int.MAX_VALUE }
                 )
                 .map { (stats, total) -> rankingEntry(stats, total.toString()) }
         )
@@ -192,3 +194,20 @@ private fun formatPerMatch(total: Int, matches: Int): String {
     if (matches == 0) return "0.0"
     return (kotlin.math.round(total.toDouble() / matches * 10) / 10).toString()
 }
+
+private fun formatPerMatch(total: Double, matches: Int): String {
+    if (matches == 0) return "0.0"
+    return formatOneDecimal(total / matches)
+}
+
+private fun formatGoals(total: Double): String {
+    val roundedTotal = kotlin.math.round(total * 10) / 10
+    return if (roundedTotal % 1.0 == 0.0) {
+        roundedTotal.toInt().toString()
+    } else {
+        roundedTotal.toString()
+    }
+}
+
+private fun formatOneDecimal(value: Double): String =
+    (kotlin.math.round(value * 10) / 10).toString()

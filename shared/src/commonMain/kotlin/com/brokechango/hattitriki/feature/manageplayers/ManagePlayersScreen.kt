@@ -24,6 +24,7 @@ import com.brokechango.hattitriki.core.data.AdminPlayersResult
 import com.brokechango.hattitriki.core.data.EditPlayerResult
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -110,7 +111,10 @@ fun ManagePlayersScreen(
             subtitle = "Edita nombres o borra jugadores sin historial."
         )
         when {
-            uiState.isLoading -> Text("Cargando jugadores…")
+            uiState.isLoading -> SupabaseLoadingState(
+                message = "Cargando los jugadores…",
+                compact = true
+            )
             !uiState.isAdmin -> Text(uiState.errorMessage ?: "Inicia sesión como administrador desde la Zona míster.")
             else -> {
                 uiState.errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error) }

@@ -50,7 +50,7 @@ class PlayersViewModelTest {
     }
 
     @Test
-    fun zamoraCountsOnlyGoalsAssignedToPlayersWhoWereGoalkeepers() {
+    fun zamoraSplitsTeamGoalsAgainstBetweenEveryGoalkeeperInTheMatch() {
         val ana = Player(id = "ana", name = "Ana")
         val bruno = Player(id = "bruno", name = "Bruno")
         val carlos = Player(id = "carlos", name = "Carlos")
@@ -81,7 +81,14 @@ class PlayersViewModelTest {
         viewModel.selectCategory(PlayerRankingCategory.ZAMORA)
 
         assertEquals(
-            listOf("ana" to "0", "carlos" to "1", "bruno" to "2"),
+            listOf("ana" to "0", "bruno" to "1.5", "carlos" to "1.5"),
+            viewModel.uiState.value.rankings.map { it.stats.player.id to it.value }
+        )
+
+        viewModel.selectCategory(PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH)
+
+        assertEquals(
+            listOf("ana" to "0.0", "bruno" to "1.5", "carlos" to "1.5"),
             viewModel.uiState.value.rankings.map { it.stats.player.id to it.value }
         )
     }

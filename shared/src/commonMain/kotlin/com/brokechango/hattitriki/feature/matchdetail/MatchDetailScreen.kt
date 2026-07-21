@@ -1,23 +1,19 @@
 package com.brokechango.hattitriki.feature.matchdetail
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,6 +39,10 @@ import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.emoji_football
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun MatchDetailScreen(
@@ -54,11 +54,13 @@ fun MatchDetailScreen(
     val match = uiState.match
 
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         if (uiState.isLoading) {
-            Text("Cargando acta…")
+            SupabaseLoadingState(message = "Cargando el acta del partido…")
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -95,10 +97,7 @@ fun MatchDetailScreen(
             )
         }
 
-        GoalsSummary(
-            uiState = uiState,
-            modifier = Modifier.weight(1f)
-        )
+        GoalsSummary(uiState = uiState)
     }
 }
 
@@ -144,7 +143,6 @@ private fun GoalsSummary(
     modifier: Modifier = Modifier
 ) {
     val match = uiState.match ?: return
-    val goalsListState = rememberLazyListState()
 
     Column(
         modifier = modifier,
@@ -178,86 +176,20 @@ private fun GoalsSummary(
                 fontWeight = FontWeight.Bold
             )
         }
-        FootballCard(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f)
-        ) {
-            Box(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = goalsListState,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(end = 10.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(match.goals) { goal ->
-                        GoalRow(
-                            goal = goal,
-                            scorerName = uiState.playersById[goal.playerId]?.name.orEmpty(),
-                            goalkeeperWhoConceded = uiState.playersById[goal.goalkeeperId]?.name.orEmpty()
-                        )
-                    }
+        FootballCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                match.goals.forEach { goal ->
+                    GoalRow(
+                        goal = goal,
+                        scorerName = uiState.playersById[goal.playerId]?.name.orEmpty(),
+                        goalkeeperWhoConceded = uiState.playersById[goal.goalkeeperId]?.name.orEmpty()
+                    )
                 }
-                GoalsScrollIndicator(
-                    state = goalsListState,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .fillMaxHeight()
-                        .padding(vertical = 8.dp, horizontal = 4.dp)
-                        .width(4.dp)
-                )
             }
         }
-    }
-}
-
-@Composable
-private fun GoalsScrollIndicator(
-    state: LazyListState,
-    modifier: Modifier = Modifier
-) {
-    val trackColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.18f)
-    val thumbColor = CrestGold.copy(alpha = 0.90f)
-
-    Canvas(modifier = modifier) {
-        val indicatorState = state.scrollIndicatorState ?: return@Canvas
-        val contentSize = indicatorState.contentSize
-        val viewportSize = indicatorState.viewportSize
-        val scrollOffset = indicatorState.scrollOffset
-        val scrollRange = contentSize - viewportSize
-
-        if (
-            contentSize == Int.MAX_VALUE ||
-            viewportSize == Int.MAX_VALUE ||
-            scrollOffset == Int.MAX_VALUE ||
-            viewportSize <= 0 ||
-            size.height <= 0f ||
-            scrollRange <= 0
-        ) {
-            return@Canvas
-        }
-
-        val minimumThumbHeight = minOf(24.dp.toPx(), size.height)
-        val thumbHeight = (size.height * viewportSize / contentSize.toFloat())
-            .coerceIn(minimumThumbHeight, size.height)
-        val thumbOffset = (
-            scrollOffset.toFloat() / scrollRange * (size.height - thumbHeight)
-        ).coerceIn(0f, size.height - thumbHeight)
-        val cornerRadius = CornerRadius(size.width / 2f, size.width / 2f)
-
-        drawRoundRect(
-            color = trackColor,
-            size = size,
-            cornerRadius = cornerRadius
-        )
-        drawRoundRect(
-            color = thumbColor,
-            topLeft = Offset(0f, thumbOffset),
-            size = Size(size.width, thumbHeight),
-            cornerRadius = cornerRadius
-        )
     }
 }
 
@@ -382,12 +314,20 @@ private fun GoalMarker(isOwnGoal: Boolean) {
             },
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = if (isOwnGoal) "O.G" else "⚽",
-            style = MaterialTheme.typography.labelMedium,
-            color = if (isOwnGoal) CrestRed else CrestGold,
-            fontWeight = FontWeight.Bold
-        )
+        if (isOwnGoal) {
+            Text(
+                text = "O.G",
+                style = MaterialTheme.typography.labelMedium,
+                color = CrestRed,
+                fontWeight = FontWeight.Bold
+            )
+        } else {
+            Image(
+                painter = painterResource(Res.drawable.emoji_football),
+                contentDescription = "Gol",
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 

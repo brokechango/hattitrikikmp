@@ -31,15 +31,15 @@ interface FriendlyFootballRepository {
 }
 
 /**
- * Public, read-only source for the league. The database RPCs deliberately
- * expose only the fields needed by the public screens; write access remains
+ * Member-only, read-only source for the league. The database RPCs deliberately
+ * expose only the fields needed by the league screens; write access remains
  * limited to the existing administrator RPCs and RLS policies.
  */
 class SupabaseFriendlyFootballRepository(
     private val client: SupabaseClient
 ) : FriendlyFootballRepository {
     override suspend fun loadSnapshot(): FootballSnapshotResult = try {
-        logSupabaseRequest("Cargar datos públicos de la liga")
+        logSupabaseRequest("Cargar datos de la liga")
         val players = client.postgrest
             .rpc("get_public_league_players")
             .decodeList<StoredPublicPlayer>()
@@ -49,7 +49,7 @@ class SupabaseFriendlyFootballRepository(
             .decodeList<StoredPublicMatch>()
             .map(StoredPublicMatch::toFriendlyMatch)
 
-        logSupabaseSuccess("Cargar datos públicos de la liga")
+        logSupabaseSuccess("Cargar datos de la liga")
         FootballSnapshotResult.Success(
             FootballSnapshot(
                 players = players,
@@ -57,7 +57,7 @@ class SupabaseFriendlyFootballRepository(
             )
         )
     } catch (exception: Exception) {
-        logSupabaseFailure("Cargar datos públicos de la liga", exception)
+        logSupabaseFailure("Cargar datos de la liga", exception)
         FootballSnapshotResult.Failure(publicLeagueLoadErrorMessage(exception.message))
     }
 }
@@ -169,9 +169,44 @@ fun FootballSnapshot.playerStats(): List<PlayerStats> = players.map { player ->
     )
 }.sortedWith(compareByDescending<PlayerStats> { it.goals }.thenByDescending { it.wins })
 
+/**
+ * Splits each team's goals conceded equally between every player who kept goal for that team.
+ *
+ * A match only records that a player was one of the goalkeepers, not how many minutes they
+ * played, so an equal share is the only neutral way to account for matches with goalkeeper
+ * changes without charging every goalkeeper with the full score.
+ */
+internal fun FootballSnapshot.goalsAgainstShareByGoalkeeperId(): Map<String, Double> {
+    val goalsAgainst = mutableMapOf<String, Double>()
+
+    matches.forEach { match ->
+        TeamSide.entries.forEach teamLoop@{ team ->
+            val goalkeeperIds = match.players
+                .asSequence()
+                .filter { it.team == team && it.wasGoalkeeper }
+                .map { it.playerId }
+                .distinct()
+                .toList()
+            if (goalkeeperIds.isEmpty()) return@teamLoop
+
+            val teamGoalsAgainst = when (team) {
+                TeamSide.A -> match.teamBScore
+                TeamSide.B -> match.teamAScore
+            }
+            val goalkeeperShare = teamGoalsAgainst.toDouble() / goalkeeperIds.size
+            goalkeeperIds.forEach { goalkeeperId ->
+                goalsAgainst[goalkeeperId] =
+                    (goalsAgainst[goalkeeperId] ?: 0.0) + goalkeeperShare
+            }
+        }
+    }
+
+    return goalsAgainst
+}
+
 internal fun publicLeagueLoadErrorMessage(errorDetails: String?): String = supabaseMessage(
     errorDetails = errorDetails,
-    setupMessage = "La lectura pública de la liga no está configurada. Aplica la última migración de Supabase.",
+    setupMessage = "La lectura privada de la liga no está configurada. Aplica la última migración de Supabase.",
     permissionMessage = "No tienes permisos para consultar los datos de la liga.",
     connectionMessage = "No se ha podido conectar con Supabase. Comprueba tu conexión e inténtalo de nuevo.",
     fallbackMessage = "No se han podido cargar los datos de la liga. Inténtalo de nuevo."

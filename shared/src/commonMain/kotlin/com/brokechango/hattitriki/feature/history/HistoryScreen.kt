@@ -3,6 +3,8 @@ package com.brokechango.hattitriki.feature.history
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,11 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.HattitrikiPullToRefresh
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 
 @Composable
 fun HistoryScreen(
@@ -37,18 +41,20 @@ fun HistoryScreen(
         onRefresh = viewModel::refresh,
         modifier = modifier
     ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val columns = if (maxWidth >= 900.dp) 2 else 1
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         ScreenTitle(
             title = "Resultados",
             subtitle = "Todos los partidos guardados de la liga del grupo."
         )
         if (uiState.isLoading) {
-            Text("Cargando partidos…")
+            SupabaseLoadingState(message = "Cargando los partidos…")
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -67,56 +73,87 @@ fun HistoryScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        uiState.matches.forEach { match ->
-            FootballCard(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onEvent(HistoryEvent.OpenMatch(match.id)) }
+        uiState.matches.chunked(columns).forEach { matchRow ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            match.dateLabel,
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "FINAL",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-                    ) {
-                        Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                        ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
-                        Text(
-                            "Equipo B",
-                            modifier = Modifier.weight(1f),
-                            fontWeight = FontWeight.Bold,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.End
-                        )
-                    }
-                    match.penaltyShootout?.let {
-                        PenaltyScore(
-                            score = "${it.teamAScore} - ${it.teamBScore}",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
+                matchRow.forEach { match ->
+                    HistoryMatchCard(
+                        match = match,
+                        onClick = { onEvent(HistoryEvent.OpenMatch(match.id)) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                repeat(columns - matchRow.size) {
+                    Box(modifier = Modifier.weight(1f))
                 }
             }
         }
     }
+    }
+    }
+}
+
+@Composable
+private fun HistoryMatchCard(
+    match: FriendlyMatch,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FootballCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    match.dateLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "FINAL",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
+                Text(
+                    "Equipo B",
+                    modifier = Modifier.weight(1f),
+                    fontWeight = FontWeight.Bold,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.End
+                )
+            }
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "",
+                    style = MaterialTheme.typography.labelMedium,
+                    minLines = 1
+                )
+                match.penaltyShootout?.let {
+                    PenaltyScore(
+                        score = "${it.teamAScore} - ${it.teamBScore}",
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
     }
 }

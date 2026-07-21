@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.brokechango.hattitriki.core.data.FootballSnapshot
 import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.goalsAgainstShareByGoalkeeperId
 import com.brokechango.hattitriki.core.data.playerStats
-import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -82,7 +82,7 @@ class HomeViewModel(
             latestMatch = snapshot.matches.firstOrNull(),
             totalMatches = snapshot.matches.size,
             totalGoals = snapshot.matches.sumOf { it.teamAScore + it.teamBScore },
-            featuredStats = buildFeaturedStats(snapshot.matches, stats).sortedBy { stat ->
+            featuredStats = buildFeaturedStats(snapshot, stats).sortedBy { stat ->
                 featuredStatsOrder.indexOf(stat.category)
             },
             isLoading = false,
@@ -91,7 +91,7 @@ class HomeViewModel(
     }
 
     private fun buildFeaturedStats(
-        matches: List<FriendlyMatch>,
+        snapshot: FootballSnapshot,
         stats: List<PlayerStats>
     ): List<HomeFeaturedStat> {
         val topScorer = stats.maxWithOrNull(compareBy<PlayerStats> { it.goals }.thenBy { it.wins })
@@ -100,25 +100,22 @@ class HomeViewModel(
             .maxByOrNull { it.goals.toDouble() / it.matchesPlayed }
         val mostPlayed = stats.maxWithOrNull(compareBy<PlayerStats> { it.matchesPlayed }.thenBy { it.wins })
         val mostWins = stats.maxWithOrNull(compareBy<PlayerStats> { it.wins }.thenBy { it.goals })
+        val goalsAgainstByGoalkeeperId = snapshot.goalsAgainstShareByGoalkeeperId()
         val goalkeeperStats = stats
             .filter { it.goalkeeperMatches > 0 }
             .map { playerStats ->
-                val goalsAgainst = matches.sumOf { match ->
-                    match.goals
-                        .filter { it.goalkeeperId == playerStats.player.id }
-                        .sumOf { it.count }
-                }
+                val goalsAgainst = goalsAgainstByGoalkeeperId[playerStats.player.id] ?: 0.0
                 playerStats to goalsAgainst
             }
         val bestGoalkeeper = goalkeeperStats
             .minWithOrNull(
-                compareBy<Pair<PlayerStats, Int>> { it.second }
+                compareBy<Pair<PlayerStats, Double>> { it.second }
                     .thenByDescending { it.first.goalkeeperMatches }
                     .thenByDescending { it.first.wins }
             )
         val bestGoalkeeperPerMatch = goalkeeperStats
             .minByOrNull { (playerStats, goalsAgainst) ->
-                goalsAgainst.toDouble() / playerStats.goalkeeperMatches
+                goalsAgainst / playerStats.goalkeeperMatches
             }
 
         return listOfNotNull(
@@ -140,7 +137,7 @@ class HomeViewModel(
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.ZAMORA,
                     playerName = playerStats.player.name,
-                    value = goalsAgainst.toString()
+                    value = formatGoals(goalsAgainst)
                 )
             },
             bestGoalkeeperPerMatch?.let { (playerStats, goalsAgainst) ->
@@ -170,5 +167,19 @@ class HomeViewModel(
     private fun formatPerMatch(total: Int, matches: Int): String {
         if (matches == 0) return "0.0"
         return (round(total.toDouble() / matches * 10) / 10).toString()
+    }
+
+    private fun formatPerMatch(total: Double, matches: Int): String {
+        if (matches == 0) return "0.0"
+        return (round(total / matches * 10) / 10).toString()
+    }
+
+    private fun formatGoals(total: Double): String {
+        val roundedTotal = round(total * 10) / 10
+        return if (roundedTotal % 1.0 == 0.0) {
+            roundedTotal.toInt().toString()
+        } else {
+            roundedTotal.toString()
+        }
     }
 }

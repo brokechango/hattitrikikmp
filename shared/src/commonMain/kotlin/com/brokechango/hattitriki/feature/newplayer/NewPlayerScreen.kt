@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 
 @Composable
 fun NewPlayerScreen(
@@ -42,7 +43,10 @@ fun NewPlayerScreen(
         )
 
         when {
-            uiState.isCheckingAccess -> Text("Comprobando permisos…")
+            uiState.isCheckingAccess -> SupabaseLoadingState(
+                message = "Comprobando permisos…",
+                compact = true
+            )
             !uiState.isAdmin -> AccessDenied(uiState.errorMessage)
             else -> NewPlayerForm(uiState, viewModel::onEvent)
         }
