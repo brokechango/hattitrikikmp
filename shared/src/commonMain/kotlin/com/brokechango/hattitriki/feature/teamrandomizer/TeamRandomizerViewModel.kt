@@ -34,10 +34,11 @@ class TeamRandomizerViewModel(
 
     fun onEvent(event: TeamRandomizerEvent) {
         when (event) {
-            is TeamRandomizerEvent.ParticipantsChanged -> updateInput(participantInput = event.value)
-            is TeamRandomizerEvent.TeamCountChanged -> updateInput(teamCountInput = event.value)
+            is TeamRandomizerEvent.TogglePlayer -> togglePlayer(event.playerId)
+            is TeamRandomizerEvent.TeamCountChanged -> updateTeamCount(event.value)
             TeamRandomizerEvent.Generate -> generateTeams()
-            TeamRandomizerEvent.UseActiveRoster -> useActiveRoster()
+            TeamRandomizerEvent.SelectAllPlayers -> selectAllPlayers()
+            TeamRandomizerEvent.ClearSelection -> clearSelection()
             TeamRandomizerEvent.SaveDraft -> saveDraft()
             TeamRandomizerEvent.ClearDraft -> clearDraft()
             TeamRandomizerEvent.ToggleStatsBalance -> _uiState.value = _uiState.value.copy(
@@ -47,28 +48,49 @@ class TeamRandomizerViewModel(
                 errorMessage = null
             )
             TeamRandomizerEvent.ReloadRoster -> reloadRoster()
-            TeamRandomizerEvent.LoadExample -> {
-                _uiState.value = _uiState.value.copy(
-                    participantInput = "Alex\nBruno\nCarmen\nDani\nElena\nFran\nGabi\nHugo\nInés\nJavi",
-                    teamCountInput = "2",
-                    teams = emptyList(),
-                    draftMessage = null,
-                    errorMessage = null
-                )
-            }
-            TeamRandomizerEvent.Clear -> _uiState.value = _uiState.value.copy(
-                participantInput = "",
-                teams = emptyList(),
-                draftMessage = null,
-                errorMessage = null
-            )
         }
     }
 
-    private fun updateInput(participantInput: String? = null, teamCountInput: String? = null) {
+    private fun togglePlayer(playerId: String) {
+        val state = _uiState.value
+        if (state.registeredPlayers.none { it.id == playerId }) return
+        val selectedPlayerIds = state.selectedPlayerIds.toMutableSet().apply {
+            if (!add(playerId)) remove(playerId)
+        }
+        _uiState.value = state.copy(
+            selectedPlayerIds = selectedPlayerIds,
+            teamCount = state.teamCount.coerceAtMost(selectedPlayerIds.size.coerceAtLeast(2)),
+            teams = emptyList(),
+            draftMessage = null,
+            errorMessage = null
+        )
+    }
+
+    private fun updateTeamCount(value: Int) {
+        val state = _uiState.value
+        val upperBound = state.participants.size.coerceAtLeast(2)
+        _uiState.value = state.copy(
+            teamCount = value.coerceIn(2, upperBound),
+            teams = emptyList(),
+            draftMessage = null,
+            errorMessage = null
+        )
+    }
+
+    private fun selectAllPlayers() {
+        val state = _uiState.value
+        _uiState.value = state.copy(
+            selectedPlayerIds = state.registeredPlayers.map(TeamParticipant::id).toSet(),
+            teams = emptyList(),
+            draftMessage = null,
+            errorMessage = null
+        )
+    }
+
+    private fun clearSelection() {
         _uiState.value = _uiState.value.copy(
-            participantInput = participantInput ?: _uiState.value.participantInput,
-            teamCountInput = teamCountInput ?: _uiState.value.teamCountInput,
+            selectedPlayerIds = emptySet(),
+            teamCount = 2,
             teams = emptyList(),
             draftMessage = null,
             errorMessage = null
@@ -78,8 +100,10 @@ class TeamRandomizerViewModel(
     private fun generateTeams() {
         val currentState = _uiState.value
         val teamCount = currentState.teamCount
-        if (teamCount == null) {
-            _uiState.value = currentState.copy(errorMessage = "Indica un número válido de equipos.")
+        if (!currentState.canGenerate) {
+            _uiState.value = currentState.copy(
+                errorMessage = "Selecciona al menos dos jugadores de la plantilla activa."
+            )
             return
         }
 
@@ -101,22 +125,6 @@ class TeamRandomizerViewModel(
                     errorMessage = error.message
                 )
             }
-        )
-    }
-
-    private fun useActiveRoster() {
-        val currentState = _uiState.value
-        if (currentState.registeredPlayers.isEmpty()) {
-            _uiState.value = currentState.copy(
-                errorMessage = "No hay jugadores activos disponibles. Actualiza la plantilla o añade jugadores."
-            )
-            return
-        }
-        _uiState.value = currentState.copy(
-            participantInput = currentState.registeredPlayers.joinToString("\n") { it.name },
-            teams = emptyList(),
-            draftMessage = null,
-            errorMessage = null
         )
     }
 
@@ -218,20 +226,35 @@ class TeamRandomizerViewModel(
                         }
                         else -> emptyMap()
                     }
-                    _uiState.value = _uiState.value.copy(
+                    val currentState = _uiState.value
+                    val activePlayers = playersResult.players
+                        .filter { it.isActive }
+                        .sortedBy { it.name.lowercase() }
+                        .map { player ->
+                            TeamParticipant(
+                                id = player.id,
+                                name = player.name,
+                                hasCardio = player.hasCardio,
+                                statsScore = statsByPlayerId[player.id] ?: 0.0
+                            )
+                        }
+                    val activePlayerIds = activePlayers.map(TeamParticipant::id).toSet()
+                    val selectedPlayerIds = if (currentState.registeredPlayers.isEmpty()) {
+                        activePlayerIds
+                    } else {
+                        currentState.selectedPlayerIds.intersect(activePlayerIds)
+                    }
+                    _uiState.value = currentState.copy(
                         isLoadingRoster = false,
-                        registeredPlayers = playersResult.players
-                            .filter { it.isActive }
-                            .sortedBy { it.name.lowercase() }
-                            .map { player ->
-                                TeamParticipant(
-                                    id = player.id,
-                                    name = player.name,
-                                    hasCardio = player.hasCardio,
-                                    statsScore = statsByPlayerId[player.id] ?: 0.0
-                                )
-                            },
+                        registeredPlayers = activePlayers,
+                        selectedPlayerIds = selectedPlayerIds,
+                        teamCount = currentState.teamCount.coerceAtMost(
+                            selectedPlayerIds.size.coerceAtLeast(2)
+                        ),
+                        teams = emptyList(),
                         statsAvailable = snapshotResult is FootballSnapshotResult.Success,
+                        balanceStats = currentState.balanceStats &&
+                            snapshotResult is FootballSnapshotResult.Success,
                         rosterMessage = when (snapshotResult) {
                             null -> "La plantilla está lista, pero faltan las estadísticas de la liga."
                             is FootballSnapshotResult.Failure -> "La plantilla está lista, pero no se han podido cargar las estadísticas: ${snapshotResult.message}"

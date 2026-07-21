@@ -29,12 +29,6 @@ object TeamRandomizer {
         goalsConcededPerMatch: Double
     ): Double = goals * 3.0 + wins * 2.0 + matchesPlayed + goalkeeperMatches - goalsConcededPerMatch
 
-    fun participantsFrom(input: String): List<String> = input
-        .lineSequence()
-        .map(String::trim)
-        .filter(String::isNotEmpty)
-        .toList()
-
     fun createTeams(
         participants: List<TeamParticipant>,
         teamCount: Int,

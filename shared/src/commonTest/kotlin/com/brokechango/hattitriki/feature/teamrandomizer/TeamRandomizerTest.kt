@@ -8,14 +8,6 @@ import kotlin.test.assertTrue
 
 class TeamRandomizerTest {
     @Test
-    fun `parses one trimmed participant per nonblank line`() {
-        assertEquals(
-            listOf("Ana", "Bruno", "Ana"),
-            TeamRandomizer.participantsFrom(" Ana \n\nBruno\n Ana")
-        )
-    }
-
-    @Test
     fun `creates balanced teams and includes every participant once`() {
         val participants = listOf("Ana", "Bruno", "Carmen", "Dani", "Elena", "Fran", "Gabi")
             .mapIndexed { index, name -> TeamParticipant(id = index.toString(), name = name) }
@@ -92,6 +84,7 @@ class TeamRandomizerTest {
         )
         val state = TeamRandomizerUiState(
             registeredPlayers = registeredPlayers,
+            selectedPlayerIds = registeredPlayers.map(TeamParticipant::id).toSet(),
             teams = listOf(
                 RandomTeam("Equipo 1", listOf(registeredPlayers[0])),
                 RandomTeam("Equipo 2", listOf(registeredPlayers[1]))
@@ -102,11 +95,26 @@ class TeamRandomizerTest {
     }
 
     @Test
-    fun `does not save manual participants as a match draft`() {
+    fun `only selected active players take part in the draw`() {
+        val registeredPlayers = listOf(
+            TeamParticipant("alex", "Alex"),
+            TeamParticipant("bruno", "Bruno"),
+            TeamParticipant("carmen", "Carmen")
+        )
+        val state = TeamRandomizerUiState(
+            registeredPlayers = registeredPlayers,
+            selectedPlayerIds = setOf("alex", "carmen")
+        )
+
+        assertEquals(listOf("Alex", "Carmen"), state.participants.map(TeamParticipant::name))
+    }
+
+    @Test
+    fun `does not save players outside the active roster as a match draft`() {
         val state = TeamRandomizerUiState(
             teams = listOf(
-                RandomTeam("Equipo 1", listOf(TeamParticipant("manual-ana", "Ana"))),
-                RandomTeam("Equipo 2", listOf(TeamParticipant("manual-bruno", "Bruno")))
+                RandomTeam("Equipo 1", listOf(TeamParticipant("external-ana", "Ana"))),
+                RandomTeam("Equipo 2", listOf(TeamParticipant("external-bruno", "Bruno")))
             )
         )
 

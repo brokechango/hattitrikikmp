@@ -3,8 +3,8 @@ package com.brokechango.hattitriki.feature.teamrandomizer
 import com.brokechango.hattitriki.core.data.MatchTeamsDraft
 
 data class TeamRandomizerUiState(
-    val participantInput: String = "",
-    val teamCountInput: String = "2",
+    val selectedPlayerIds: Set<String> = emptySet(),
+    val teamCount: Int = 2,
     val registeredPlayers: List<TeamParticipant> = emptyList(),
     val isLoadingRoster: Boolean = false,
     val statsAvailable: Boolean = false,
@@ -16,24 +16,26 @@ data class TeamRandomizerUiState(
     val rosterMessage: String? = null
 ) {
     val participants: List<TeamParticipant>
-        get() = TeamRandomizer.participantsFrom(participantInput).mapIndexed { index, name ->
-            registeredPlayers.firstOrNull { it.name.equals(name, ignoreCase = true) }
-                ?: TeamParticipant(id = "manual-$index-$name", name = name)
-        }
-
-    val teamCount: Int?
-        get() = teamCountInput.toIntOrNull()
+        get() = registeredPlayers.filter { it.id in selectedPlayerIds }
 
     val canGenerate: Boolean
-        get() = teamCount != null && participants.size >= 2 && teamCount in 2..participants.size
+        get() = !isLoadingRoster && participants.size >= 2 && teamCount in 2..participants.size
 
     val estimatedTeamSize: String
-        get() = teamCount?.takeIf { it > 0 }?.let { count ->
-            "${participants.size / count}-${(participants.size + count - 1) / count}"
-        } ?: "—"
+        get() = if (participants.size >= teamCount) {
+            val smallestTeam = participants.size / teamCount
+            val largestTeam = (participants.size + teamCount - 1) / teamCount
+            if (smallestTeam == largestTeam) "$smallestTeam" else "$smallestTeam–$largestTeam"
+        } else {
+            "—"
+        }
 
     val selectedCardioPlayers: Int
         get() = participants.count(TeamParticipant::hasCardio)
+
+    val allPlayersSelected: Boolean
+        get() = registeredPlayers.isNotEmpty() &&
+            selectedPlayerIds.containsAll(registeredPlayers.map(TeamParticipant::id))
 
     val isCurrentResultSaved: Boolean
         get() = teams.size == 2 &&
@@ -51,7 +53,7 @@ data class TeamRandomizerUiState(
             val playerIds = teams.flatMap { team -> team.players.map(TeamParticipant::id) }
             val registeredPlayerIds = registeredPlayers.map(TeamParticipant::id).toSet()
             if (playerIds.any { it !in registeredPlayerIds }) {
-                return "Solo se pueden guardar jugadores de la plantilla activa."
+                return "Los equipos solo pueden incluir jugadores de la plantilla activa."
             }
             if (playerIds.distinct().size != playerIds.size) {
                 return "Cada jugador debe aparecer una sola vez en el borrador."
