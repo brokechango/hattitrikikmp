@@ -1,6 +1,6 @@
 package com.brokechango.hattitriki.core.data
 
-import com.brokechango.hattitriki.core.auth.AdminAuthRepository
+import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.logging.logSupabaseFailure
 import com.brokechango.hattitriki.core.logging.logSupabaseRequest
 import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
@@ -47,10 +47,10 @@ private data class PlayerIdRpcInput(@SerialName("p_player_id") val playerId: Str
 /** Writes players through the admin's current Supabase session. */
 class AdminPlayerRepository internal constructor(
     private val client: SupabaseClient,
-    private val adminAuthRepository: AdminAuthRepository
+    private val authRepository: AuthRepository
 ) {
     suspend fun createPlayer(name: String, hasCardio: Boolean): CreatePlayerResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) {
+        if (!authRepository.hasActiveAdminSession()) {
             return CreatePlayerResult.Unauthorized
         }
 
@@ -71,7 +71,7 @@ class AdminPlayerRepository internal constructor(
     }
 
     suspend fun loadPlayers(): AdminPlayersResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return AdminPlayersResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return AdminPlayersResult.Unauthorized
         return try {
             logSupabaseRequest("Cargar jugadores de administración")
             val players =
@@ -86,7 +86,7 @@ class AdminPlayerRepository internal constructor(
     }
 
     suspend fun updatePlayer(playerId: String, name: String, hasCardio: Boolean): EditPlayerResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return EditPlayerResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return EditPlayerResult.Unauthorized
         return try {
             logSupabaseRequest("Actualizar jugador")
             client.postgrest.rpc("update_active_player", UpdatePlayerRpcInput(playerId, name.trim(), hasCardio))
@@ -99,7 +99,7 @@ class AdminPlayerRepository internal constructor(
     }
 
     suspend fun deletePlayer(playerId: String): EditPlayerResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return EditPlayerResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return EditPlayerResult.Unauthorized
         return try {
             logSupabaseRequest("Borrar jugador")
             client.postgrest.rpc("delete_player", PlayerIdRpcInput(playerId))
@@ -118,7 +118,7 @@ class AdminPlayerRepository internal constructor(
         }
     }
 
-    suspend fun hasActiveAdminSession(): Boolean = adminAuthRepository.hasActiveAdminSession()
+    suspend fun hasActiveAdminSession(): Boolean = authRepository.hasActiveAdminSession()
 }
 
 /** Keeps PostgREST and database implementation details out of the UI. */

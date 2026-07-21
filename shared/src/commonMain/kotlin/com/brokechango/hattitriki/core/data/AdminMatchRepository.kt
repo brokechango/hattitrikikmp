@@ -1,6 +1,6 @@
 package com.brokechango.hattitriki.core.data
 
-import com.brokechango.hattitriki.core.auth.AdminAuthRepository
+import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.logging.logSupabaseFailure
 import com.brokechango.hattitriki.core.logging.logSupabaseRequest
 import com.brokechango.hattitriki.core.logging.logSupabaseSuccess
@@ -130,10 +130,10 @@ sealed interface EditMatchResult {
  */
 class AdminMatchRepository internal constructor(
     private val client: SupabaseClient,
-    private val adminAuthRepository: AdminAuthRepository
+    private val authRepository: AuthRepository
 ) {
     suspend fun loadActivePlayers(): LoadPlayersResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return LoadPlayersResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return LoadPlayersResult.Unauthorized
 
         return try {
             logSupabaseRequest("Cargar plantilla activa")
@@ -152,7 +152,7 @@ class AdminMatchRepository internal constructor(
     }
 
     suspend fun createMatch(draft: MatchReportDraft): CreateMatchResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return CreateMatchResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return CreateMatchResult.Unauthorized
         return try {
             logSupabaseRequest("Guardar acta")
             client.postgrest.rpc(
@@ -178,7 +178,7 @@ class AdminMatchRepository internal constructor(
     }
 
     suspend fun loadMatches(): AdminMatchesResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return AdminMatchesResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return AdminMatchesResult.Unauthorized
         return try {
             logSupabaseRequest("Cargar partidos de administración")
             val matches =
@@ -193,7 +193,7 @@ class AdminMatchRepository internal constructor(
     }
 
     suspend fun loadMatch(matchId: String): LoadMatchResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return LoadMatchResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return LoadMatchResult.Unauthorized
         return try {
             logSupabaseRequest("Cargar acta")
             val report = client.postgrest.rpc("get_friendly_match_acta", MatchIdRpcInput(matchId))
@@ -219,7 +219,7 @@ class AdminMatchRepository internal constructor(
     }
 
     suspend fun updateMatch(matchId: String, draft: MatchReportDraft): EditMatchResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return EditMatchResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return EditMatchResult.Unauthorized
         return try {
             logSupabaseRequest("Actualizar acta")
             client.postgrest.rpc(
@@ -244,7 +244,7 @@ class AdminMatchRepository internal constructor(
     }
 
     suspend fun deleteMatch(matchId: String): EditMatchResult {
-        if (!adminAuthRepository.hasActiveAdminSession()) return EditMatchResult.Unauthorized
+        if (!authRepository.hasActiveAdminSession()) return EditMatchResult.Unauthorized
         return try {
             logSupabaseRequest("Borrar acta")
             client.postgrest.rpc("delete_friendly_match", MatchIdRpcInput(matchId))
@@ -256,7 +256,7 @@ class AdminMatchRepository internal constructor(
         }
     }
 
-    suspend fun hasActiveAdminSession(): Boolean = adminAuthRepository.hasActiveAdminSession()
+    suspend fun hasActiveAdminSession(): Boolean = authRepository.hasActiveAdminSession()
 }
 
 internal fun activePlayersLoadErrorMessage(errorDetails: String?): String =
