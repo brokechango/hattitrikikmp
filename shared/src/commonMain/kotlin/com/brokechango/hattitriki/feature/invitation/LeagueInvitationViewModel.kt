@@ -5,14 +5,21 @@ import androidx.lifecycle.viewModelScope
 import com.brokechango.hattitriki.core.data.AdminPlayersResult
 import com.brokechango.hattitriki.core.data.LeagueInvitationGateway
 import com.brokechango.hattitriki.core.data.SendLeagueInvitationResult
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 class LeagueInvitationViewModel(
     private val invitationGateway: LeagueInvitationGateway?
 ) : ViewModel() {
+    private companion object {
+        const val invitationSendTimeoutMillis = 20_000L
+    }
+
     private val _uiState = MutableStateFlow(LeagueInvitationUiState())
     val uiState: StateFlow<LeagueInvitationUiState> = _uiState.asStateFlow()
 
@@ -103,21 +110,39 @@ class LeagueInvitationViewModel(
 
         _uiState.value = state.copy(isSending = true, errorMessage = null, sentEmail = null)
         viewModelScope.launch {
-            when (val result = gateway.sendInvitation(checkNotNull(state.selectedPlayerId), state.normalizedEmail)) {
-                is SendLeagueInvitationResult.Success -> _uiState.value = _uiState.value.copy(
-                    email = "",
+            try {
+                when (
+                    val result = withTimeout(invitationSendTimeoutMillis) {
+                        gateway.sendInvitation(checkNotNull(state.selectedPlayerId), state.normalizedEmail)
+                    }
+                ) {
+                    is SendLeagueInvitationResult.Success -> _uiState.value = _uiState.value.copy(
+                        email = "",
+                        isSending = false,
+                        sentEmail = result.email,
+                        errorMessage = null
+                    )
+                    SendLeagueInvitationResult.Unauthorized -> _uiState.value = _uiState.value.copy(
+                        isSending = false,
+                        isAdmin = false,
+                        errorMessage = "Tu sesión ya no tiene permisos para enviar invitaciones."
+                    )
+                    is SendLeagueInvitationResult.Failure -> _uiState.value = _uiState.value.copy(
+                        isSending = false,
+                        errorMessage = result.message
+                    )
+                }
+            } catch (_: TimeoutCancellationException) {
+                _uiState.value = _uiState.value.copy(
                     isSending = false,
-                    sentEmail = result.email,
-                    errorMessage = null
+                    errorMessage = "El envío está tardando demasiado. Comprueba tu conexión e inténtalo de nuevo."
                 )
-                SendLeagueInvitationResult.Unauthorized -> _uiState.value = _uiState.value.copy(
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (_: Throwable) {
+                _uiState.value = _uiState.value.copy(
                     isSending = false,
-                    isAdmin = false,
-                    errorMessage = "Tu sesión ya no tiene permisos para enviar invitaciones."
-                )
-                is SendLeagueInvitationResult.Failure -> _uiState.value = _uiState.value.copy(
-                    isSending = false,
-                    errorMessage = result.message
+                    errorMessage = "No se ha podido enviar la invitación. Inténtalo de nuevo."
                 )
             }
         }
