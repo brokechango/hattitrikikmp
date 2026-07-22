@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 /**
  * Campo de fecha con la estética de Hattitriki. [value] y [onDateSelected]
@@ -49,8 +52,8 @@ fun HattitrikiDatePickerField(
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
         ) {
-            Text("Fecha", color = CrestGold)
-            Text(if (value.isBlank()) "Seleccionar fecha" else value)
+            Text(stringResource(Res.string.field_date), color = CrestGold)
+            Text(if (value.isBlank()) stringResource(Res.string.placeholder_select_date) else value)
         }
     }
 
@@ -71,7 +74,7 @@ fun HattitrikiDatePickerField(
                     enabled = datePickerState.selectedDateMillis != null,
                     colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
                 ) {
-                    Text("Aceptar")
+                    Text(stringResource(Res.string.action_accept))
                 }
             },
             dismissButton = {
@@ -79,7 +82,7 @@ fun HattitrikiDatePickerField(
                     onClick = { isPickerVisible = false },
                     colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
                 ) {
-                    Text("Cancelar")
+                    Text(stringResource(Res.string.action_cancel))
                 }
             },
             colors = androidx.compose.material3.DatePickerDefaults.colors(

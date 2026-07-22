@@ -26,6 +26,9 @@ import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun HistoryScreen(
@@ -50,11 +53,11 @@ fun HistoryScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
         ScreenTitle(
-            title = "Resultados",
-            subtitle = "Todos los partidos guardados de la liga del grupo."
+            title = stringResource(Res.string.history_title),
+            subtitle = stringResource(Res.string.history_subtitle)
         )
         if (uiState.isLoading) {
-            SupabaseLoadingState(message = "Cargando los partidos…")
+            SupabaseLoadingState(message = stringResource(Res.string.history_loading))
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -62,14 +65,14 @@ fun HistoryScreen(
             return@Column
         }
         Text(
-            text = "PARTIDOS FINALIZADOS",
+            text = stringResource(Res.string.history_finished_matches),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.Black
         )
         if (uiState.matches.isEmpty()) {
             Text(
-                "Todavía no hay partidos guardados.",
+                stringResource(Res.string.history_no_matches),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -121,7 +124,7 @@ private fun HistoryMatchCard(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    "FINAL",
+                    stringResource(Res.string.history_final),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Black
@@ -132,10 +135,10 @@ private fun HistoryMatchCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
-                Text("Equipo A", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.team_a), modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
                 ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
                 Text(
-                    "Equipo B",
+                    stringResource(Res.string.team_b),
                     modifier = Modifier.weight(1f),
                     fontWeight = FontWeight.Bold,
                     textAlign = androidx.compose.ui.text.style.TextAlign.End

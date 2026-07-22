@@ -6,6 +6,8 @@
 	<string>$(SUPABASE_URL)</string>
 	<key>SUPABASE_PUBLISHABLE_KEY</key>
 	<string>$(SUPABASE_PUBLISHABLE_KEY)</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Usamos tu foto elegida para actualizar tu perfil dentro de la liga.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UILaunchScreen</key>

@@ -75,7 +75,7 @@ No incluyas estos archivos ni sus valores en commits o incidencias públicas.
 
 ### Base de datos de partidos programados
 
-Antes de usar la app, aplica en orden todas las migraciones de `supabase/migrations/`, incluida `20260721120000_private_league_membership.sql`, mediante el SQL Editor o la CLI de Supabase. La última migración exige un perfil activo para consultar resultados, alineaciones, goles y jugadores; las RPC de administración exigen además el rol `admin`. También activa RLS, retira el acceso directo a las tablas y revoca las lecturas a `anon`. El cliente nunca usa una clave `service_role`.
+Antes de usar la app, aplica en orden todas las migraciones de `supabase/migrations/`, incluida `20260722120000_player_profiles.sql`, mediante el SQL Editor o la CLI de Supabase. La última migración exige un perfil activo para consultar resultados, alineaciones, goles y jugadores; vincula de forma única las cuentas con los jugadores y crea el bucket privado de avatares. Las RPC de administración exigen además el rol `admin`. También activa RLS, retira el acceso directo a las tablas y revoca las lecturas a `anon`. El cliente nunca usa una clave `service_role`.
 
 Desactiva el registro público de usuarios en Supabase Auth y crea o invita una cuenta individual para cada miembro. Las cuentas nuevas reciben un perfil inactivo: actívalo como `member` o `admin` con los ejemplos incluidos al final de `20260721120000_private_league_membership.sql`. La autorización real permanece en PostgreSQL; ocultar botones en la interfaz no concede ni sustituye permisos.
 
@@ -83,12 +83,20 @@ Desactiva el registro público de usuarios en Supabase Auth y crea o invita una 
 
 1. En Supabase, configura **Authentication → URL Configuration → Site URL** con la raíz HTTPS permanente de la web. No uses un túnel temporal. Añade esa misma raíz a **Redirect URLs**.
 2. Mantén `{{ .ConfirmationURL }}` en la plantilla **Authentication → Email Templates → Invite user**.
-3. Envía la invitación desde **Authentication → Users → Add user → Send invitation**.
-4. Activa después el perfil creado por el trigger, eligiendo el rol apropiado:
+3. Despliega la función que utiliza la Zona míster para enviar invitaciones:
+
+   ```powershell
+   supabase functions deploy send-league-invitation
+   ```
+
+   La función se ejecuta con la clave de servicio de Supabase, que no llega a la app. Comprueba que las variables de entorno predeterminadas `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` están disponibles en el proyecto.
+4. Desde **Zona míster → Invitar a la liga**, el administrador elige primero un jugador elegible (activo, sin cuenta ni invitación pendiente) y después su correo. La función reserva el vínculo, Auth crea la cuenta invitada y el trigger asigna su `profiles.player_id` al jugador elegido. Así el perfil conserva todas las estadísticas previas. La nueva cuenta queda habilitada automáticamente con el rol `member`.
+5. Los avatares están en el bucket privado `avatars`: sólo se admiten JPEG o WebP de hasta 300 KB. El selector de la app recorta y optimiza la foto antes de subirla; las vistas usan URL firmadas. No conviertas el bucket en público.
+6. Para crear una segunda cuenta administradora, cambia el rol explícitamente:
 
    ```sql
    update public.profiles
-   set role = 'member', is_active = true
+   set role = 'admin', is_active = true
    where id = (
        select id
        from auth.users
@@ -96,7 +104,7 @@ Desactiva el registro público de usuarios en Supabase Auth y crea o invita una 
    );
    ```
 
-Al abrir el enlace, Supabase redirige a la raíz web con una sesión de invitación. Hattitriki la detecta antes de comprobar la membresía, solicita una contraseña de al menos ocho caracteres y la guarda en Auth. El estado pendiente vive solo en `sessionStorage` y se elimina al completar o cancelar el proceso. Si el perfil todavía está inactivo, la contraseña queda configurada, pero la app cierra la sesión hasta que un administrador lo active.
+Al abrir el enlace, Supabase redirige a la raíz web con una sesión de invitación. Hattitriki la detecta antes de comprobar la membresía, solicita una contraseña de al menos ocho caracteres y la guarda en Auth. El estado pendiente vive solo en `sessionStorage` y se elimina al completar o cancelar el proceso.
 
 ## Ejecutar el proyecto
 
@@ -159,7 +167,7 @@ Antes del primer despliegue:
 3. En `Settings → Secrets and variables → Actions → Secrets`, crea `CLOUDFLARE_API_TOKEN`.
 4. En `Settings → Secrets and variables → Actions → Variables`, crea `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_PAGES_PROJECT`, `SUPABASE_URL` y `SUPABASE_PUBLISHABLE_KEY`. Los valores de Supabase son públicos para el cliente; nunca configures `service_role` ni `sb_secret_`.
 5. Crea y protege el entorno de GitHub `cloudflare-pages` para permitir despliegues únicamente desde `main`.
-6. Aplica todas las migraciones de Supabase, especialmente `20260721120000_private_league_membership.sql`.
+6. Aplica todas las migraciones de Supabase, especialmente `20260722120000_player_profiles.sql`.
 
 Cloudflare Pages interpreta el archivo `_headers` incluido en el bundle, por lo que el despliegue aplica CSP, HSTS, `nosniff`, protección frente a iframes y la política de permisos configurada por la aplicación.
 

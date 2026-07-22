@@ -45,9 +45,11 @@ kotlin {
         androidMain.dependencies {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.ktor.client.okhttp)
+            implementation(libs.image.picker.kmp)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            implementation(libs.image.picker.kmp)
         }
         wasmJsMain.dependencies {
             implementation(libs.ktor.client.js)
@@ -66,7 +68,11 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.ktor.client.core)
             implementation(libs.supabase.auth)
+            implementation(libs.supabase.functions)
             implementation(libs.supabase.postgrest)
+            implementation(libs.supabase.storage)
+            implementation(libs.sketch.compose)
+            implementation(libs.sketch.http)
             implementation(libs.multiplatform.settings.no.arg)
         }
         commonTest.dependencies {

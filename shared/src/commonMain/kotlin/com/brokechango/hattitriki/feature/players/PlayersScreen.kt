@@ -3,6 +3,7 @@ package com.brokechango.hattitriki.feature.players
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -108,6 +109,7 @@ fun PlayersScreen(
             category = uiState.selectedCategory,
             rankings = uiState.rankings,
             showRecentForm = uiState.rankingView == RankingView.DETAILED,
+            onPlayerSelected = { playerId -> onEvent(PlayersEvent.SelectPlayer(playerId)) },
             modifier = Modifier.fillMaxWidth()
         )
     }
@@ -278,6 +280,7 @@ private fun RankingTable(
     category: PlayerRankingCategory,
     rankings: List<PlayerRankingEntry>,
     showRecentForm: Boolean,
+    onPlayerSelected: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     FootballCard(modifier = modifier) {
@@ -296,7 +299,8 @@ private fun RankingTable(
                         ranking = ranking,
                         category = category,
                         showRecentForm = showRecentForm,
-                        showInlineRecentForm = showInlineRecentForm
+                        showInlineRecentForm = showInlineRecentForm,
+                        onClick = { onPlayerSelected(ranking.stats.player.id) }
                     )
                     if (index < rankings.lastIndex) {
                         HorizontalDivider(
@@ -342,7 +346,8 @@ private fun RankingRow(
     ranking: PlayerRankingEntry,
     category: PlayerRankingCategory,
     showRecentForm: Boolean,
-    showInlineRecentForm: Boolean
+    showInlineRecentForm: Boolean,
+    onClick: () -> Unit
 ) {
     val stats = ranking.stats
     val rank = index + 1
@@ -355,7 +360,9 @@ private fun RankingRow(
             )
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 12.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             RankNumber(rank = rank, modifier = Modifier.width(30.dp))

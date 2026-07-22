@@ -4,7 +4,9 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.AuthConfig
 import io.github.jan.supabase.createSupabaseClient
+import io.github.jan.supabase.functions.Functions
 import io.github.jan.supabase.postgrest.Postgrest
+import io.github.jan.supabase.storage.Storage
 
 /**
  * Public connection values for one Supabase project.
@@ -41,7 +43,9 @@ internal class SupabaseProvider(
         supabaseKey = credentials.publishableKey
     ) {
         install(Auth, configureAuth)
+        install(Functions)
         install(Postgrest)
+        install(Storage)
     }
 }
 

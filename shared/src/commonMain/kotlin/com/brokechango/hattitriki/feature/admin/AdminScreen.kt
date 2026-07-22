@@ -15,6 +15,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.*
+import org.jetbrains.compose.resources.stringResource
 
 @Composable
 fun AdminScreen(
@@ -23,6 +26,7 @@ fun AdminScreen(
     onAddPlayer: () -> Unit,
     onManageMatches: () -> Unit,
     onManagePlayers: () -> Unit,
+    onInviteLeagueMember: () -> Unit,
     onTeamRandomizer: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -31,8 +35,8 @@ fun AdminScreen(
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         ScreenTitle(
-            title = "Zona míster",
-            subtitle = "Gestiona partidos y jugadores desde un espacio privado."
+            title = stringResource(Res.string.admin_title),
+            subtitle = stringResource(Res.string.admin_subtitle)
         )
 
         FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
@@ -41,12 +45,12 @@ fun AdminScreen(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Herramientas de administración",
+                    text = stringResource(Res.string.admin_tools),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black
                 )
                 Text(
-                    text = "Tu cuenta tiene permisos de míster. Elige qué quieres gestionar.",
+                    text = stringResource(Res.string.admin_welcome),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
@@ -54,37 +58,43 @@ fun AdminScreen(
                     onClick = onNewMatch,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Nuevo partido")
+                    Text(stringResource(Res.string.admin_new_match))
                 }
                 OutlinedButton(
                     onClick = onManageMatches,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Editar o borrar partidos")
+                    Text(stringResource(Res.string.admin_manage_matches))
                 }
                 OutlinedButton(
                     onClick = onAddPlayer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Añadir jugador")
+                    Text(stringResource(Res.string.admin_add_player))
                 }
                 OutlinedButton(
                     onClick = onManagePlayers,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Editar o borrar jugadores")
+                    Text(stringResource(Res.string.admin_manage_players))
+                }
+                OutlinedButton(
+                    onClick = onInviteLeagueMember,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(Res.string.admin_invite_to_league))
                 }
                 OutlinedButton(
                     onClick = onTeamRandomizer,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Generador de equipos")
+                    Text(stringResource(Res.string.admin_team_randomizer))
                 }
             }
         }
 
         Text(
-            text = "Versión $appVersion",
+            text = stringResource(Res.string.admin_version, appVersion),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.End,

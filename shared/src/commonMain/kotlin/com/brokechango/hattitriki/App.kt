@@ -40,7 +40,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,11 +65,14 @@ import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.auth.LeagueRole
 import com.brokechango.hattitriki.core.data.AdminMatchRepository
 import com.brokechango.hattitriki.core.data.AdminPlayerRepository
+import com.brokechango.hattitriki.core.data.LeagueInvitationRepository
 import com.brokechango.hattitriki.core.data.MultiplatformSettingsMatchTeamsDraftStore
+import com.brokechango.hattitriki.core.data.SupabasePlayerProfileRepository
 import com.brokechango.hattitriki.core.data.SupabaseFriendlyFootballRepository
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
 import com.brokechango.hattitriki.core.navigation.Screens
+import com.brokechango.hattitriki.core.navigation.HattitrikiNavigationState
 import com.brokechango.hattitriki.core.navigation.rememberHattitrikiNavigationState
 import com.brokechango.hattitriki.feature.admin.AdminScreen
 import com.brokechango.hattitriki.feature.auth.AuthEvent
@@ -81,6 +86,8 @@ import com.brokechango.hattitriki.feature.home.HomeEvent
 import com.brokechango.hattitriki.feature.home.HomeScreen
 import com.brokechango.hattitriki.feature.home.HomeViewModel
 import com.brokechango.hattitriki.feature.home.MultiplatformSettingsHomeStatsOrderStore
+import com.brokechango.hattitriki.feature.invitation.LeagueInvitationScreen
+import com.brokechango.hattitriki.feature.invitation.LeagueInvitationViewModel
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailEvent
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailScreen
 import com.brokechango.hattitriki.feature.matchdetail.MatchDetailViewModel
@@ -98,14 +105,19 @@ import com.brokechango.hattitriki.feature.teamrandomizer.TeamRandomizerViewModel
 import com.brokechango.hattitriki.feature.players.PlayersScreen
 import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
+import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileScreen
+import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileViewModel
 import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.*
 import hattitriki.shared.generated.resources.hattitriki_app_icon
 import hattitriki.shared.generated.resources.icon_home
 import hattitriki.shared.generated.resources.icon_matches
 import hattitriki.shared.generated.resources.icon_rankings
 import hattitriki.shared.generated.resources.icon_settings
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import org.jetbrains.compose.resources.vectorResource
 
 @Composable
@@ -116,7 +128,8 @@ fun App(
     appVersion: String = "1.0",
     initialAuthEmail: String = "",
     initialAuthPassword: String = "",
-    submitInitialAuth: Boolean = false
+    submitInitialAuth: Boolean = false,
+    browserNavigationEffect: (@Composable (HattitrikiNavigationState) -> Unit)? = null
 ) {
     HattitrikiTheme {
         BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
@@ -143,6 +156,7 @@ fun App(
         val isAdmin = access.role == LeagueRole.ADMIN
         val useDesktopWebLayout = getPlatform().name == "Web" && maxWidth >= 980.dp
         val navigation = rememberHattitrikiNavigationState(isAdmin)
+        browserNavigationEffect?.invoke(navigation)
         val currentScreen = navigation.currentScreen
         val currentTopLevelScreen = navigation.currentTopLevelScreen
         val canNavigateWithinTab = navigation.canNavigateBack && currentScreen != currentTopLevelScreen
@@ -152,6 +166,9 @@ fun App(
 
         val footballRepository = remember(activeAuthRepository) {
             SupabaseFriendlyFootballRepository(activeAuthRepository.client)
+        }
+        val playerProfileRepository = remember(activeAuthRepository) {
+            SupabasePlayerProfileRepository(activeAuthRepository.client)
         }
         val homeStatsOrderStore = remember {
             MultiplatformSettingsHomeStatsOrderStore(settings)
@@ -164,11 +181,22 @@ fun App(
         }
         val historyViewModel = remember(footballRepository) { HistoryViewModel(footballRepository) }
         val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
-        val activeTeamRandomizerOpenTime = when (currentScreen) {
+        val currentTeamRandomizerOpenTime = when (currentScreen) {
             is Screens.TeamRandomizer -> currentScreen.openTime
             is Screens.TeamRandomizerResult -> currentScreen.openTime
             else -> null
         }
+        val lastTeamRandomizerOpenTime = remember { mutableStateOf<Long?>(null) }
+        currentTeamRandomizerOpenTime?.let { openTime ->
+            SideEffect {
+                lastTeamRandomizerOpenTime.value = openTime
+            }
+        }
+        // NavDisplay keeps a destination composed until its pop animation completes. Retain
+        // the randomizer session key during that short interval so the outgoing screen does
+        // not lose its ViewModel when navigating back to the admin screen.
+        val activeTeamRandomizerOpenTime =
+            currentTeamRandomizerOpenTime ?: lastTeamRandomizerOpenTime.value
         val teamRandomizerViewModel = remember(
             activeAuthRepository,
             footballRepository,
@@ -343,7 +371,9 @@ fun App(
                                                 is PlayersEvent.SelectRankingView -> {
                                                     playersViewModel.selectRankingView(event.view)
                                                 }
-                                                is PlayersEvent.SelectPlayer -> Unit
+                                                is PlayersEvent.SelectPlayer -> navigation.navigate(
+                                                    Screens.PlayerProfile(event.playerId)
+                                                )
                                             }
                                         }
                                     )
@@ -363,6 +393,9 @@ fun App(
                                         onAddPlayer = { navigation.navigate(Screens.NewPlayer) },
                                         onManageMatches = { navigation.navigate(Screens.ManageMatches) },
                                         onManagePlayers = { navigation.navigate(Screens.ManagePlayers) },
+                                        onInviteLeagueMember = {
+                                            navigation.navigate(Screens.LeagueInvitation)
+                                        },
                                         onTeamRandomizer = {
                                             navigation.navigate(
                                                 Screens.TeamRandomizer(
@@ -432,6 +465,38 @@ fun App(
                                     ManagePlayersScreen(
                                         viewModel = managePlayersViewModel,
                                         onEdit = { playerId -> navigation.navigate(Screens.EditPlayer(playerId)) }
+                                    )
+                                }
+
+                                entry<Screens.LeagueInvitation> {
+                                    val invitationViewModel = remember(activeAuthRepository) {
+                                        LeagueInvitationViewModel(
+                                            LeagueInvitationRepository(
+                                                activeAuthRepository.client,
+                                                activeAuthRepository
+                                            )
+                                        )
+                                    }
+                                    LeagueInvitationScreen(viewModel = invitationViewModel)
+                                }
+
+                                entry<Screens.PlayerProfile> { screen ->
+                                    val playerProfileViewModel = remember(
+                                        screen.playerId,
+                                        footballRepository,
+                                        playerProfileRepository
+                                    ) {
+                                        PlayerProfileViewModel(
+                                            playerId = screen.playerId,
+                                            footballRepository = footballRepository,
+                                            profileRepository = playerProfileRepository
+                                        )
+                                    }
+                                    PlayerProfileScreen(
+                                        viewModel = playerProfileViewModel,
+                                        onPlayerSelected = { playerId ->
+                                            navigation.navigate(Screens.PlayerProfile(playerId))
+                                        }
                                     )
                                 }
 
@@ -562,7 +627,7 @@ private fun MatchTopBar(
     TopAppBar(
         title = {
             Text(
-                text = if (currentScreen == Screens.Home) "HATTITRIKI FC" else topBarTitle(
+                text = if (currentScreen == Screens.Home) stringResource(Res.string.app_title_uppercase) else topBarTitle(
                     currentScreen
                 ),
                 style = androidx.compose.material3.MaterialTheme.typography.titleMedium,
@@ -590,7 +655,7 @@ private fun MatchTopBar(
                 ) {
                     Image(
                         painter = painterResource(Res.drawable.hattitriki_app_icon),
-                        contentDescription = "Hattitriki FC",
+                        contentDescription = stringResource(Res.string.content_description_app_logo),
                         modifier = Modifier.size(34.dp)
                     )
                 }
@@ -601,7 +666,7 @@ private fun MatchTopBar(
                 onClick = onLogout,
                 colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
             ) {
-                Text("Salir", fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.action_sign_out), fontWeight = FontWeight.Bold)
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
@@ -613,20 +678,26 @@ private fun MatchTopBar(
     )
 }
 
+@Composable
 private fun topBarTitle(screen: Screens): String = when (screen) {
-    Screens.Home -> "Hattitriki FC"
-    Screens.History -> "Marcador historico"
-    Screens.Players -> "Clasificaciones"
-    Screens.Admin -> "Zona mister"
-    is Screens.NewMatch -> "Nuevo partido"
-    Screens.NewPlayer -> "Añadir jugador"
-    Screens.ManageMatches -> "Gestionar partidos"
-    Screens.ManagePlayers -> "Gestionar jugadores"
-    is Screens.TeamRandomizer -> "Generador de equipos"
-    is Screens.TeamRandomizerResult -> "Resultado"
-    is Screens.EditMatch -> "Editar partido"
-    is Screens.EditPlayer -> "Editar jugador"
-    is Screens.MatchDetail -> "Acta del partido"
+    is Screens.PlayerProfile -> "Perfil de jugador"
+    else -> stringResource(when (screen) {
+        Screens.Home -> Res.string.app_title
+        Screens.History -> Res.string.top_bar_history
+        Screens.Players -> Res.string.navigation_rankings
+        Screens.Admin -> Res.string.navigation_manager_area
+        is Screens.NewMatch -> Res.string.top_bar_new_match
+        Screens.NewPlayer -> Res.string.top_bar_new_player
+        Screens.ManageMatches -> Res.string.top_bar_manage_matches
+        Screens.ManagePlayers -> Res.string.top_bar_manage_players
+        Screens.LeagueInvitation -> Res.string.top_bar_invitation
+        is Screens.TeamRandomizer -> Res.string.top_bar_team_randomizer
+        is Screens.TeamRandomizerResult -> Res.string.top_bar_team_randomizer_result
+        is Screens.EditMatch -> Res.string.top_bar_edit_match
+        is Screens.EditPlayer -> Res.string.top_bar_edit_player
+        is Screens.MatchDetail -> Res.string.top_bar_match_record
+        is Screens.PlayerProfile -> error("Handled before resource lookup")
+    })
 }
 
 @Composable
@@ -643,11 +714,11 @@ private fun MainNavigationBar(
         NavigationBarItem(
             selected = currentScreen == Screens.Home,
             onClick = { onNavigate(Screens.Home) },
-            label = { Text("Inicio") },
+            label = { Text(stringResource(Res.string.navigation_home)) },
             icon = {
                 NavigationIcon(
                     resource = Res.drawable.icon_home,
-                    contentDescription = "Inicio"
+                    contentDescription = stringResource(Res.string.navigation_home)
                 )
             },
             colors = navItemColors()
@@ -655,11 +726,11 @@ private fun MainNavigationBar(
         NavigationBarItem(
             selected = currentScreen == Screens.History,
             onClick = { onNavigate(Screens.History) },
-            label = { Text("Partidos") },
+            label = { Text(stringResource(Res.string.navigation_matches)) },
             icon = {
                 NavigationIcon(
                     resource = Res.drawable.icon_matches,
-                    contentDescription = "Partidos"
+                    contentDescription = stringResource(Res.string.navigation_matches)
                 )
             },
             colors = navItemColors()
@@ -667,11 +738,11 @@ private fun MainNavigationBar(
         NavigationBarItem(
             selected = currentScreen == Screens.Players,
             onClick = { onNavigate(Screens.Players) },
-            label = { Text("Clasificaciones") },
+            label = { Text(stringResource(Res.string.navigation_rankings)) },
             icon = {
                 NavigationIcon(
                     resource = Res.drawable.icon_rankings,
-                    contentDescription = "Clasificaciones"
+                    contentDescription = stringResource(Res.string.navigation_rankings)
                 )
             },
             colors = navItemColors()
@@ -680,11 +751,11 @@ private fun MainNavigationBar(
             NavigationBarItem(
                 selected = currentScreen == Screens.Admin,
                 onClick = { onNavigate(Screens.Admin) },
-                label = { Text("Míster") },
+                label = { Text(stringResource(Res.string.navigation_manager)) },
                 icon = {
                     NavigationIcon(
                         resource = Res.drawable.icon_settings,
-                        contentDescription = "Míster"
+                        contentDescription = stringResource(Res.string.navigation_manager)
                     )
                 },
                 colors = navItemColors()
@@ -704,16 +775,16 @@ private fun NavigationIcon(resource: DrawableResource, contentDescription: Strin
 
 private data class DesktopDestination(
     val screen: Screens,
-    val label: String
+    val label: StringResource
 )
 
 private val desktopDestinations = listOf(
-    DesktopDestination(Screens.Home, "Inicio"),
-    DesktopDestination(Screens.History, "Partidos"),
-    DesktopDestination(Screens.Players, "Clasificaciones")
+    DesktopDestination(Screens.Home, Res.string.navigation_home),
+    DesktopDestination(Screens.History, Res.string.navigation_matches),
+    DesktopDestination(Screens.Players, Res.string.navigation_rankings)
 )
 
-private val desktopAdminDestination = DesktopDestination(Screens.Admin, "Zona míster")
+private val desktopAdminDestination = DesktopDestination(Screens.Admin, Res.string.navigation_manager_area)
 
 @Composable
 private fun DesktopWebTopBar(
@@ -755,18 +826,18 @@ private fun DesktopWebTopBar(
                     ) {
                         Image(
                             painter = painterResource(Res.drawable.hattitriki_app_icon),
-                            contentDescription = "Hattitriki FC",
+                            contentDescription = stringResource(Res.string.content_description_app_logo),
                             modifier = Modifier.size(36.dp)
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                             Text(
-                                text = "HATTITRIKI FC",
+                                text = stringResource(Res.string.app_title_uppercase),
                                 style = androidx.compose.material3.MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Black,
                                 letterSpacing = 0.8.sp
                             )
                             Text(
-                                text = "LIGA GENUINE",
+                                text = stringResource(Res.string.app_league_name_uppercase),
                                 style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                                 color = CrestGold,
                                 fontWeight = FontWeight.Bold,
@@ -788,7 +859,7 @@ private fun DesktopWebTopBar(
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.textButtonColors(contentColor = CrestGold)
                     ) {
-                        Text("Volver", fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.action_back), fontWeight = FontWeight.Bold)
                     }
                     Text(
                         text = topBarTitle(currentScreen),
@@ -819,7 +890,7 @@ private fun DesktopWebTopBar(
                         contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                     ) {
                         Text(
-                            text = destination.label,
+                            text = stringResource(destination.label),
                             fontWeight = if (selected) FontWeight.Black else FontWeight.SemiBold
                         )
                     }
@@ -832,7 +903,7 @@ private fun DesktopWebTopBar(
                         contentColor = CrestWhite.copy(alpha = 0.78f)
                     )
                 ) {
-                    Text("Salir", fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(Res.string.action_sign_out), fontWeight = FontWeight.SemiBold)
                 }
             }
         }

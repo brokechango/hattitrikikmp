@@ -58,7 +58,10 @@ import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import com.brokechango.hattitriki.ui.icons.rankingEmojiResource
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import kotlin.math.roundToInt
 
 @Composable
@@ -80,8 +83,8 @@ fun HomeScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         ScreenTitle(
-            title = "Liga Genuine",
-            subtitle = "Resultados, rachas y campeones de la liga Genuine."
+            title = stringResource(Res.string.home_title),
+            subtitle = stringResource(Res.string.home_subtitle)
         )
 
         if (uiState.isLoading) {
@@ -109,7 +112,7 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            "ÚLTIMO RESULTADO",
+                            stringResource(Res.string.home_last_result),
                             style = MaterialTheme.typography.labelMedium,
                             color = CrestGold,
                             fontWeight = FontWeight.Black
@@ -126,9 +129,9 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Equipo A", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.team_a), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                         ScorePill(score = "${match.teamAScore} - ${match.teamBScore}")
-                        Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        Text(stringResource(Res.string.team_b), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     }
                     match.penaltyShootout?.let {
                         PenaltyScore(
@@ -147,12 +150,12 @@ fun HomeScreen(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = "Aún no hay resultados",
+                        text = stringResource(Res.string.home_no_results),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Black
                     )
                     Text(
-                        text = "Cuando se guarde el primer partido aparecerá aquí.",
+                        text = stringResource(Res.string.home_no_results_description),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -164,18 +167,18 @@ fun HomeScreen(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = "TEMPORADA",
+                text = stringResource(Res.string.home_season),
                 style = MaterialTheme.typography.labelMedium,
                 color = CrestGold,
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "Estadísticas de la liga",
+                text = stringResource(Res.string.home_league_stats),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Black
             )
             Text(
-                text = "${uiState.totalMatches} partidos · ${uiState.totalGoals} goles",
+                text = stringResource(Res.string.home_stats_summary, uiState.totalMatches, uiState.totalGoals),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -196,7 +199,7 @@ private fun HomeLoadingState(modifier: Modifier = Modifier) {
         val placeholders = 6
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SupabaseLoadingState(
-                message = "Cargando los datos de la liga…",
+                message = stringResource(Res.string.home_loading),
                 compact = true
             )
             FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
