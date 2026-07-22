@@ -7,7 +7,9 @@ data class FriendlyMatch(
     val teamBScore: Int,
     val players: List<MatchPlayer>,
     val goals: List<GoalEntry>,
-    val penaltyShootout: PenaltyShootout? = null
+    val penaltyShootout: PenaltyShootout? = null,
+    /** Stable ISO date (`AAAA-MM-DD`) received from the league API. */
+    val playedOn: String = dateLabel
 ) {
     init {
         require(penaltyShootout == null || teamAScore == teamBScore) {

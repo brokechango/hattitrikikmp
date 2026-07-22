@@ -99,6 +99,7 @@ private data class StoredPublicMatch(
     fun toFriendlyMatch(): FriendlyMatch = FriendlyMatch(
         id = id,
         dateLabel = playedOn.toDisplayDate(),
+        playedOn = playedOn,
         teamAScore = teamAScore,
         teamBScore = teamBScore,
         players = participants.map {

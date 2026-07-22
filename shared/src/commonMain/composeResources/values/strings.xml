@@ -95,7 +95,15 @@
     <string name="history_loading">Cargando los partidos…</string>
     <string name="history_finished_matches">PARTIDOS FINALIZADOS</string>
     <string name="history_no_matches">Todavía no hay partidos guardados.</string>
+    <string name="history_no_filtered_matches">No hay partidos para el filtro seleccionado.</string>
     <string name="history_final">FINAL</string>
+    <string name="history_filter_date">FILTRAR POR FECHA</string>
+    <string name="history_filter_month">Mes</string>
+    <string name="history_filter_year">Año</string>
+    <string name="history_filter_custom">Personalizado</string>
+    <string name="history_filter_from">Desde</string>
+    <string name="history_filter_to">Hasta</string>
+    <string name="history_clear_filter">Limpiar filtro</string>
 
     <string name="rankings_title">Rankings</string>
     <string name="rankings_loading">Cargando los rankings…</string>
