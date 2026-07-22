@@ -48,11 +48,17 @@ internal class SupabaseProvider(
 fun createAuthRepository(
     credentials: SupabaseCredentials,
     passwordSetupPending: Boolean = false,
+    passwordRecoveryPending: Boolean = false,
+    passwordRecoveryRedirectUrl: String? = null,
     onPasswordSetupResolved: () -> Unit = {},
+    onPasswordRecoveryResolved: () -> Unit = {},
     configureAuth: AuthConfig.() -> Unit = {}
 ): AuthRepository =
     AuthRepository(
         client = SupabaseProvider(credentials, configureAuth).client,
         passwordSetupPending = passwordSetupPending,
-        onPasswordSetupResolved = onPasswordSetupResolved
+        passwordRecoveryPending = passwordRecoveryPending,
+        passwordRecoveryRedirectUrl = passwordRecoveryRedirectUrl,
+        onPasswordSetupResolved = onPasswordSetupResolved,
+        onPasswordRecoveryResolved = onPasswordRecoveryResolved
     )

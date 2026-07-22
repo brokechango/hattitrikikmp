@@ -17,6 +17,7 @@ import org.jetbrains.skiko.wasm.onWasmReady
 private const val WEB_AUTH_SESSION_KEY = "hattitriki-session"
 private const val LEGACY_WEB_AUTH_SESSION_KEY = "hattitriki-admin-session"
 private const val WEB_PENDING_INVITATION_KEY = "hattitriki-pending-invitation"
+private const val WEB_PENDING_PASSWORD_RECOVERY_KEY = "hattitriki-pending-password-recovery"
 
 @OptIn(ExperimentalComposeUiApi::class, ExperimentalWasmJsInterop::class)
 fun main() {
@@ -80,13 +81,23 @@ private fun createWebAuthRepositoryOrNull(): AuthRepository? {
         } else {
             removeLegacyPersistentSession(WEB_AUTH_SESSION_KEY)
             removeLegacyPersistentSession(LEGACY_WEB_AUTH_SESSION_KEY)
-            val sessionSettings = StorageSettings(sessionStorage)
-            if (isInvitationCallback()) {
-                markPendingInvitation(WEB_PENDING_INVITATION_KEY)
-                sessionStorage.removeItem(WEB_AUTH_SESSION_KEY)
+            when (authCallbackType()) {
+                "invite" -> {
+                    markPendingInvitation(WEB_PENDING_INVITATION_KEY)
+                    sessionStorage.removeItem(WEB_AUTH_SESSION_KEY)
+                }
+
+                "recovery" -> {
+                    markPendingPasswordRecovery(WEB_PENDING_PASSWORD_RECOVERY_KEY)
+                    sessionStorage.removeItem(WEB_AUTH_SESSION_KEY)
+                }
             }
+            val sessionSettings = StorageSettings(sessionStorage)
             val hasSavedSession = sessionSettings.getStringOrNull(WEB_AUTH_SESSION_KEY) != null
             val passwordSetupPending = hasPendingInvitation(WEB_PENDING_INVITATION_KEY)
+            val passwordRecoveryPending = hasPendingPasswordRecovery(
+                WEB_PENDING_PASSWORD_RECOVERY_KEY
+            )
 
             createAuthRepository(
                 SupabaseCredentials(
@@ -94,8 +105,13 @@ private fun createWebAuthRepositoryOrNull(): AuthRepository? {
                     publishableKey = publishableKey
                 ),
                 passwordSetupPending = passwordSetupPending,
+                passwordRecoveryPending = passwordRecoveryPending,
+                passwordRecoveryRedirectUrl = webOriginOrNull(),
                 onPasswordSetupResolved = {
                     clearPendingInvitation(WEB_PENDING_INVITATION_KEY)
+                },
+                onPasswordRecoveryResolved = {
+                    clearPendingPasswordRecovery(WEB_PENDING_PASSWORD_RECOVERY_KEY)
                 }
             ) {
                 sessionManager = SettingsSessionManager(
@@ -123,8 +139,14 @@ private external fun readSupabaseUrl(): String
 private external fun readSupabasePublishableKey(): String
 
 @OptIn(ExperimentalWasmJsInterop::class)
-@JsFun("() => { try { const hash = (globalThis.location?.hash ?? '').replace(/^#/, ''); return new URLSearchParams(hash).get('type') === 'invite'; } catch (_) { return false; } }")
-private external fun isInvitationCallback(): Boolean
+@JsFun("() => { try { const hash = (globalThis.location?.hash ?? '').replace(/^#/, ''); const hashType = new URLSearchParams(hash).get('type'); return hashType ?? new URLSearchParams(globalThis.location?.search ?? '').get('type') ?? ''; } catch (_) { return ''; } }")
+private external fun authCallbackType(): String
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("() => { try { return globalThis.location?.origin ?? ''; } catch (_) { return ''; } }")
+private external fun webOrigin(): String
+
+private fun webOriginOrNull(): String? = webOrigin().trim().takeIf { it.isNotBlank() }
 
 @OptIn(ExperimentalWasmJsInterop::class)
 @JsFun("(key) => { try { globalThis.sessionStorage?.setItem(key, 'true'); } catch (_) {} }")
@@ -137,6 +159,18 @@ private external fun hasPendingInvitation(key: String): Boolean
 @OptIn(ExperimentalWasmJsInterop::class)
 @JsFun("(key) => { try { globalThis.sessionStorage?.removeItem(key); } catch (_) {} }")
 private external fun clearPendingInvitation(key: String)
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("(key) => { try { globalThis.sessionStorage?.setItem(key, 'true'); } catch (_) {} }")
+private external fun markPendingPasswordRecovery(key: String)
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("(key) => { try { return globalThis.sessionStorage?.getItem(key) === 'true'; } catch (_) { return false; } }")
+private external fun hasPendingPasswordRecovery(key: String): Boolean
+
+@OptIn(ExperimentalWasmJsInterop::class)
+@JsFun("(key) => { try { globalThis.sessionStorage?.removeItem(key); } catch (_) {} }")
+private external fun clearPendingPasswordRecovery(key: String)
 
 @OptIn(ExperimentalWasmJsInterop::class)
 @JsFun("(key) => { try { globalThis.localStorage?.removeItem(key); } catch (_) {} }")

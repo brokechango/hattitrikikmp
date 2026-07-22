@@ -6,6 +6,8 @@ sealed interface AuthGateState {
     data object Loading : AuthGateState
     data object SignedOut : AuthGateState
     data object InvitationSetup : AuthGateState
+    data object PasswordRecoveryRequest : AuthGateState
+    data object PasswordRecoverySetup : AuthGateState
     data class Authenticated(val access: LeagueAccess) : AuthGateState
     data class AccessError(val message: String) : AuthGateState
 }
@@ -18,6 +20,7 @@ data class AuthUiState(
     val confirmPassword: String = "",
     val isSubmitting: Boolean = false,
     val isAuthConfigured: Boolean = true,
+    val passwordRecoveryEmailSent: Boolean = false,
     val errorMessage: String? = null
 ) {
     val canSubmitLogin: Boolean
@@ -43,6 +46,19 @@ data class AuthUiState(
 
     val canSubmitInvitation: Boolean
         get() = gateState == AuthGateState.InvitationSetup &&
+            isAuthConfigured &&
+            !isSubmitting &&
+            newPassword.length >= MIN_PASSWORD_LENGTH &&
+            confirmPassword == newPassword
+
+    val canSubmitPasswordRecovery: Boolean
+        get() = gateState == AuthGateState.PasswordRecoveryRequest &&
+            isAuthConfigured &&
+            !isSubmitting &&
+            email.isNotBlank()
+
+    val canSubmitPasswordRecoverySetup: Boolean
+        get() = gateState == AuthGateState.PasswordRecoverySetup &&
             isAuthConfigured &&
             !isSubmitting &&
             newPassword.length >= MIN_PASSWORD_LENGTH &&

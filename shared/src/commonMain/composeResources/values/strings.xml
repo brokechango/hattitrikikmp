@@ -1,0 +1,128 @@
+<resources>
+    <string name="app_name">Hattitriki</string>
+    <string name="app_title">Hattitriki FC</string>
+    <string name="app_title_uppercase">HATTITRIKI FC</string>
+    <string name="app_league_name">Liga Genuine</string>
+    <string name="app_league_name_uppercase">LIGA GENUINE</string>
+    <string name="content_description_app_logo">Hattitriki FC</string>
+
+    <string name="action_back">Volver</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_delete">Borrar</string>
+    <string name="action_edit">Editar</string>
+    <string name="action_retry">Reintentar</string>
+    <string name="action_save_changes">Guardar cambios</string>
+    <string name="action_sign_out">Salir</string>
+
+    <string name="navigation_home">Inicio</string>
+    <string name="navigation_matches">Partidos</string>
+    <string name="navigation_rankings">Clasificaciones</string>
+    <string name="navigation_manager">Míster</string>
+    <string name="navigation_manager_area">Zona míster</string>
+
+    <string name="top_bar_history">Marcador histórico</string>
+    <string name="top_bar_new_match">Nuevo partido</string>
+    <string name="top_bar_new_player">Añadir jugador</string>
+    <string name="top_bar_manage_matches">Gestionar partidos</string>
+    <string name="top_bar_manage_players">Gestionar jugadores</string>
+    <string name="top_bar_team_randomizer">Generador de equipos</string>
+    <string name="top_bar_team_randomizer_result">Resultado</string>
+    <string name="top_bar_edit_match">Editar partido</string>
+    <string name="top_bar_edit_player">Editar jugador</string>
+    <string name="top_bar_invitation">Invitar a la liga</string>
+    <string name="top_bar_match_record">Acta del partido</string>
+
+    <string name="field_date">Fecha</string>
+    <string name="placeholder_select_date">Seleccionar fecha</string>
+    <string name="action_accept">Aceptar</string>
+
+    <string name="auth_private_access">Acceso privado para miembros de la liga</string>
+    <string name="auth_email">Correo electrónico</string>
+    <string name="auth_password">Contraseña</string>
+    <string name="auth_signing_in">Entrando…</string>
+    <string name="auth_sign_in">Entrar</string>
+    <string name="auth_forgot_password">¿Has olvidado la contraseña?</string>
+    <string name="auth_complete_invitation">Completa tu invitación</string>
+    <string name="auth_choose_invitation_password">Elige la contraseña con la que entrarás en Hattitriki.</string>
+    <string name="auth_choose_invitation_password_for_email">Invitación para %1$s. Elige la contraseña con la que entrarás.</string>
+    <string name="auth_new_password">Nueva contraseña</string>
+    <string name="auth_confirm_password">Repite la contraseña</string>
+    <string name="auth_saving">Guardando…</string>
+    <string name="auth_save_password">Guardar contraseña</string>
+    <string name="auth_back_to_sign_in">Volver al inicio de sesión</string>
+    <string name="auth_recover_password">Recupera tu contraseña</string>
+    <string name="auth_password_recovery_sent">Hemos enviado un enlace para crear una nueva contraseña a %1$s.</string>
+    <string name="auth_recovery_spam_hint">Si no lo recibes en unos minutos, revisa la carpeta de spam o solicita otro enlace.</string>
+    <string name="auth_recovery_email_hint">Indica el correo con el que accedes a la liga y te enviaremos un enlace seguro.</string>
+    <string name="auth_send_another_link">Enviar otro enlace</string>
+    <string name="auth_sending">Enviando…</string>
+    <string name="auth_send_recovery_link">Enviar enlace de recuperación</string>
+    <string name="auth_create_new_password">Crea una nueva contraseña</string>
+    <string name="auth_choose_new_password">Elige una contraseña nueva para volver a entrar en Hattitriki.</string>
+    <string name="auth_choose_new_password_for_email">Recuperación para %1$s. Elige una contraseña nueva.</string>
+    <string name="auth_save_new_password">Guardar nueva contraseña</string>
+    <string name="auth_hide_password">Ocultar contraseña</string>
+    <string name="auth_show_password">Mostrar contraseña</string>
+    <string name="auth_checking_league_access">Comprobando el acceso a la liga…</string>
+    <string name="auth_access_error_title">No hemos podido validar tu acceso</string>
+    <string name="auth_close_session">Cerrar sesión</string>
+
+    <string name="admin_title">Zona míster</string>
+    <string name="admin_subtitle">Gestiona partidos y jugadores desde un espacio privado.</string>
+    <string name="admin_tools">Herramientas de administración</string>
+    <string name="admin_welcome">Tu cuenta tiene permisos de míster. Elige qué quieres gestionar.</string>
+    <string name="admin_new_match">Nuevo partido</string>
+    <string name="admin_manage_matches">Editar o borrar partidos</string>
+    <string name="admin_add_player">Añadir jugador</string>
+    <string name="admin_manage_players">Editar o borrar jugadores</string>
+    <string name="admin_invite_to_league">Invitar a la liga</string>
+    <string name="admin_team_randomizer">Generador de equipos</string>
+    <string name="admin_version">Versión %1$s</string>
+
+    <string name="home_title">Liga Genuine</string>
+    <string name="home_subtitle">Resultados, rachas y campeones de la liga Genuine.</string>
+    <string name="home_last_result">ÚLTIMO RESULTADO</string>
+    <string name="home_no_results">Aún no hay resultados</string>
+    <string name="home_no_results_description">Cuando se guarde el primer partido aparecerá aquí.</string>
+    <string name="home_season">TEMPORADA</string>
+    <string name="home_league_stats">Estadísticas de la liga</string>
+    <string name="home_stats_summary">%1$s partidos · %2$s goles</string>
+    <string name="home_loading">Cargando los datos de la liga…</string>
+
+    <string name="history_title">Resultados</string>
+    <string name="history_subtitle">Todos los partidos guardados de la liga del grupo.</string>
+    <string name="history_loading">Cargando los partidos…</string>
+    <string name="history_finished_matches">PARTIDOS FINALIZADOS</string>
+    <string name="history_no_matches">Todavía no hay partidos guardados.</string>
+    <string name="history_final">FINAL</string>
+
+    <string name="rankings_title">Clasificaciones</string>
+    <string name="rankings_loading">Cargando las clasificaciones…</string>
+    <string name="rankings_hide_filters">Ocultar filtros</string>
+    <string name="rankings_show_filters">Mostrar filtros</string>
+    <string name="rankings_season_summary">TEMPORADA · %1$s JUGADORES</string>
+    <string name="rankings_last_five">ÚLTIMOS 5</string>
+    <string name="rankings_no_matches">Sin partidos</string>
+    <string name="ranking_category_top_scorer">Máximo goleador</string>
+    <string name="ranking_category_goals_per_match">Goles / partido</string>
+    <string name="ranking_category_zamora">Zamora</string>
+    <string name="ranking_category_goals_conceded_per_match">GC / partido</string>
+    <string name="ranking_category_most_played">Más jugado</string>
+    <string name="ranking_category_most_wins">Más ganador</string>
+    <string name="ranking_category_player_on_form">Jugador en racha</string>
+    <string name="ranking_detail_goals">goles</string>
+    <string name="ranking_detail_goals_per_match">goles por partido</string>
+    <string name="ranking_detail_goals_conceded">goles recibidos</string>
+    <string name="ranking_detail_goalkeeper">como portero</string>
+    <string name="ranking_detail_matches">partidos</string>
+    <string name="ranking_detail_wins">victorias</string>
+    <string name="ranking_detail_total_performance">rendimiento total</string>
+    <string name="ranking_column_player">JUGADOR</string>
+    <string name="ranking_column_recent_form">RACHA</string>
+
+    <string name="team_a">Equipo A</string>
+    <string name="team_b">Equipo B</string>
+    <string name="team_label">Equipo %1$s</string>
+    <string name="goal">Gol</string>
+    <string name="goalkeeper">Portero</string>
+</resources>

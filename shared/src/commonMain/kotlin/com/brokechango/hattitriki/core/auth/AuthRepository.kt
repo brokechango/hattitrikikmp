@@ -53,15 +53,22 @@ private data class CurrentUserAccess(
 class AuthRepository internal constructor(
     internal val client: SupabaseClient,
     passwordSetupPending: Boolean = false,
-    private val onPasswordSetupResolved: () -> Unit = {}
+    passwordRecoveryPending: Boolean = false,
+    private val passwordRecoveryRedirectUrl: String? = null,
+    private val onPasswordSetupResolved: () -> Unit = {},
+    private val onPasswordRecoveryResolved: () -> Unit = {}
 ) {
     private var isPasswordSetupPending = passwordSetupPending
+    private var isPasswordRecoveryPending = passwordRecoveryPending
 
     val sessionStatus: StateFlow<SessionStatus>
         get() = client.auth.sessionStatus
 
     val requiresPasswordSetup: Boolean
         get() = isPasswordSetupPending
+
+    val requiresPasswordRecovery: Boolean
+        get() = isPasswordRecoveryPending
 
     val currentUserEmail: String
         get() = client.auth.currentUserOrNull()?.email.orEmpty()
@@ -105,8 +112,40 @@ class AuthRepository internal constructor(
         }
     }
 
+    suspend fun requestPasswordRecovery(email: String) {
+        logSupabaseRequest("Solicitar recuperación de contraseña")
+        try {
+            client.auth.resetPasswordForEmail(
+                email = email.trim(),
+                redirectUrl = passwordRecoveryRedirectUrl
+            )
+            logSupabaseSuccess("Solicitar recuperación de contraseña")
+        } catch (exception: Exception) {
+            logSupabaseFailure("Solicitar recuperación de contraseña", exception)
+            throw exception
+        }
+    }
+
+    suspend fun completePasswordRecovery(password: String) {
+        logSupabaseRequest("Restablecer contraseña")
+        try {
+            client.auth.updateUser {
+                this.password = password
+            }
+            resolvePasswordRecovery()
+            logSupabaseSuccess("Restablecer contraseña")
+        } catch (exception: Exception) {
+            logSupabaseFailure("Restablecer contraseña", exception)
+            throw exception
+        }
+    }
+
     fun discardInvitation() {
         resolvePasswordSetup()
+    }
+
+    fun discardPasswordRecovery() {
+        resolvePasswordRecovery()
     }
 
     suspend fun clearSession() {
@@ -176,6 +215,33 @@ class AuthRepository internal constructor(
             }
         }
 
+        fun passwordRecoveryRequestErrorMessage(exception: Throwable): String =
+            exception.toSupabaseUserMessage(
+                SupabaseErrorMessages(
+                    setupMessage = "El acceso de Supabase no está configurado correctamente en este dispositivo.",
+                    permissionMessage = "No se ha podido solicitar la recuperación. Comprueba el correo e inténtalo de nuevo.",
+                    connectionMessage = "No se ha podido solicitar la recuperación. Comprueba tu conexión e inténtalo de nuevo.",
+                    fallbackMessage = "No se ha podido solicitar la recuperación. Inténtalo de nuevo."
+                )
+            )
+
+        fun passwordRecoveryErrorMessage(exception: Throwable): String {
+            return when (exception.supabaseErrorCode()?.lowercase()) {
+                "weak_password" -> "La contraseña no cumple la política de seguridad de la liga."
+                "same_password" -> "La nueva contraseña debe ser distinta de la anterior."
+                "session_not_found", "session_expired", "flow_state_not_found", "flow_state_expired" ->
+                    "El enlace de recuperación no es válido o ha caducado. Solicita uno nuevo."
+                else -> exception.toSupabaseUserMessage(
+                    SupabaseErrorMessages(
+                        setupMessage = "El acceso de Supabase no está configurado correctamente en este dispositivo.",
+                        permissionMessage = "El enlace de recuperación no es válido o ha caducado. Solicita uno nuevo.",
+                        connectionMessage = "No se ha podido guardar la nueva contraseña. Comprueba tu conexión e inténtalo de nuevo.",
+                        fallbackMessage = "No se ha podido guardar la nueva contraseña. Inténtalo de nuevo."
+                    )
+                )
+            }
+        }
+
         fun signOutErrorMessage(exception: Throwable): String =
             exception.toSupabaseUserMessage(
                 SupabaseErrorMessages(
@@ -201,5 +267,11 @@ class AuthRepository internal constructor(
         if (!isPasswordSetupPending) return
         isPasswordSetupPending = false
         onPasswordSetupResolved()
+    }
+
+    private fun resolvePasswordRecovery() {
+        if (!isPasswordRecoveryPending) return
+        isPasswordRecoveryPending = false
+        onPasswordRecoveryResolved()
     }
 }

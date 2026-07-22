@@ -8,6 +8,8 @@
     const emailInput = document.getElementById("bootstrap-email");
     const passwordInput = document.getElementById("bootstrap-password");
     const submitButton = document.getElementById("bootstrap-submit");
+    const forgotPasswordButton = document.getElementById("bootstrap-forgot-password");
+    const authCallbackMessage = document.getElementById("auth-callback-message");
     const status = document.querySelector(".loading-status");
     let retryTimer = 0;
     let retryDelay = 32;
@@ -185,6 +187,10 @@
         requestMount(true);
         loadApp();
     });
+    forgotPasswordButton?.addEventListener("click", () => {
+        requestMount(false);
+        loadApp();
+    });
     updateSubmitButton();
 
     const hasSavedSession = (() => {
@@ -194,17 +200,34 @@
             return false;
         }
     })();
-    const isInvitation = (() => {
+    const authCallbackType = (() => {
         try {
             const hash = globalThis.location?.hash?.replace(/^#/, "") ?? "";
-            return new URLSearchParams(hash).get("type") === "invite";
+            return new URLSearchParams(hash).get("type")
+                ?? new URLSearchParams(globalThis.location?.search ?? "").get("type")
+                ?? "";
         } catch (_) {
-            return false;
+            return "";
         }
     })();
 
-    if (hasSavedSession || isInvitation) {
+    const isAuthCallback = authCallbackType === "invite" || authCallbackType === "recovery";
+    if (isAuthCallback) {
+        document.documentElement.dataset.authCallback = authCallbackType;
+        if (authCallbackMessage) {
+            authCallbackMessage.hidden = false;
+            authCallbackMessage.textContent = authCallbackType === "invite"
+                ? "Estamos preparando tu invitación…"
+                : "Estamos preparando la recuperación de tu contraseña…";
+        }
+    }
+
+    if (hasSavedSession || isAuthCallback) {
         requestMount(false);
-        loadApp();
+        if (isAuthCallback) {
+            scheduleAppLoad();
+        } else {
+            loadApp();
+        }
     }
 })();

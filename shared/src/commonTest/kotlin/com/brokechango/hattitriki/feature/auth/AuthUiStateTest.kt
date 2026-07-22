@@ -66,6 +66,46 @@ class AuthUiStateTest {
     }
 
     @Test
+    fun passwordRecoveryRequestRequiresConfiguredEmail() {
+        assertFalse(
+            AuthUiState(gateState = AuthGateState.PasswordRecoveryRequest)
+                .canSubmitPasswordRecovery
+        )
+        assertFalse(
+            AuthUiState(
+                gateState = AuthGateState.PasswordRecoveryRequest,
+                email = "member@example.com",
+                isAuthConfigured = false
+            ).canSubmitPasswordRecovery
+        )
+        assertTrue(
+            AuthUiState(
+                gateState = AuthGateState.PasswordRecoveryRequest,
+                email = "member@example.com"
+            ).canSubmitPasswordRecovery
+        )
+    }
+
+    @Test
+    fun passwordRecoverySetupRequiresSecureMatchingPasswords() {
+        val recoveryState = AuthUiState(gateState = AuthGateState.PasswordRecoverySetup)
+
+        assertFalse(recoveryState.canSubmitPasswordRecoverySetup)
+        assertFalse(
+            recoveryState.copy(
+                newPassword = "segura123",
+                confirmPassword = "distinta123"
+            ).canSubmitPasswordRecoverySetup
+        )
+        assertTrue(
+            recoveryState.copy(
+                newPassword = "segura123",
+                confirmPassword = "segura123"
+            ).canSubmitPasswordRecoverySetup
+        )
+    }
+
+    @Test
     fun databaseRolesAreStrictlyMapped() {
         assertEquals(LeagueRole.MEMBER, LeagueRole.fromDatabaseValue("member"))
         assertEquals(LeagueRole.ADMIN, LeagueRole.fromDatabaseValue("ADMIN"))

@@ -127,6 +127,34 @@ body {
     background: #ffd978;
 }
 
+.loading-link {
+    margin-top: 14px;
+    border: 0;
+    padding: 6px;
+    background: transparent;
+    color: #f2be3e;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.loading-link:hover {
+    color: #ffd978;
+    text-decoration: underline;
+}
+
+.loading-callback-message {
+    margin: 18px 0 0;
+    color: #b8cadc;
+    font-size: 1rem;
+    line-height: 1.45;
+}
+
+html[data-auth-callback] .loading-form,
+html[data-auth-callback] .loading-link {
+    display: none;
+}
+
 .visually-hidden,
 .loading-status {
     position: absolute;

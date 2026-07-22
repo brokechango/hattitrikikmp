@@ -19,6 +19,7 @@ class AuthViewModel(
 ) : ViewModel() {
     private var pendingSignedOutMessage: String? = null
     private var isCompletingInvitation = false
+    private var isCompletingPasswordRecovery = false
     private var pendingInitialLogin = if (
         submitInitialLogin && initialEmail.isNotBlank() && initialPassword.isNotBlank()
     ) {
@@ -57,9 +58,16 @@ class AuthViewModel(
             is AuthEvent.InvitationPasswordChanged -> updateInvitationForm(newPassword = event.value)
             is AuthEvent.InvitationPasswordConfirmationChanged ->
                 updateInvitationForm(confirmPassword = event.value)
+            is AuthEvent.RecoveryPasswordChanged -> updateInvitationForm(newPassword = event.value)
+            is AuthEvent.RecoveryPasswordConfirmationChanged ->
+                updateInvitationForm(confirmPassword = event.value)
             AuthEvent.SubmitLogin -> login()
             AuthEvent.SubmitInvitation -> completeInvitation()
             AuthEvent.CancelInvitation -> cancelInvitation()
+            AuthEvent.OpenPasswordRecovery -> openPasswordRecovery()
+            AuthEvent.SubmitPasswordRecovery -> requestPasswordRecovery()
+            AuthEvent.SubmitPasswordRecoverySetup -> completePasswordRecovery()
+            AuthEvent.CancelPasswordRecovery -> cancelPasswordRecovery()
             AuthEvent.RetryAccess -> retryAccess()
             AuthEvent.Logout -> logout()
         }
@@ -84,11 +92,17 @@ class AuthViewModel(
                             pendingSignedOutMessage =
                                 "El enlace de invitación no es válido o ha caducado. Solicita uno nuevo."
                         }
+                        if (repository.requiresPasswordRecovery) {
+                            repository.discardPasswordRecovery()
+                            pendingSignedOutMessage =
+                                "El enlace de recuperación no es válido o ha caducado. Solicita uno nuevo."
+                        }
                         showSignedOut()
                     }
                     is SessionStatus.Authenticated -> when {
-                        isCompletingInvitation -> Unit
+                        isCompletingInvitation || isCompletingPasswordRecovery -> Unit
                         repository.requiresPasswordSetup -> showInvitationSetup(repository)
+                        repository.requiresPasswordRecovery -> showPasswordRecoverySetup(repository)
                         else -> checkAccess(repository)
                     }
                     is SessionStatus.RefreshFailure -> {
@@ -109,6 +123,13 @@ class AuthViewModel(
         _uiState.value = _uiState.value.copy(
             email = email,
             password = password,
+            passwordRecoveryEmailSent = if (
+                _uiState.value.gateState == AuthGateState.PasswordRecoveryRequest
+            ) {
+                false
+            } else {
+                _uiState.value.passwordRecoveryEmailSent
+            },
             errorMessage = null
         )
     }
@@ -208,12 +229,114 @@ class AuthViewModel(
         }
     }
 
+    private fun openPasswordRecovery() {
+        authRepository ?: return
+        _uiState.value = _uiState.value.copy(
+            gateState = AuthGateState.PasswordRecoveryRequest,
+            password = "",
+            newPassword = "",
+            confirmPassword = "",
+            isSubmitting = false,
+            passwordRecoveryEmailSent = false,
+            errorMessage = null
+        )
+    }
+
+    private fun requestPasswordRecovery() {
+        val repository = authRepository ?: return
+        val state = _uiState.value
+        if (!state.canSubmitPasswordRecovery) return
+
+        _uiState.value = state.copy(isSubmitting = true, errorMessage = null)
+        viewModelScope.launch {
+            runCatching { repository.requestPasswordRecovery(state.email) }
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        isSubmitting = false,
+                        passwordRecoveryEmailSent = true,
+                        errorMessage = null
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        gateState = AuthGateState.PasswordRecoveryRequest,
+                        isSubmitting = false,
+                        passwordRecoveryEmailSent = false,
+                        errorMessage = AuthRepository.passwordRecoveryRequestErrorMessage(exception)
+                    )
+                }
+        }
+    }
+
+    private fun completePasswordRecovery() {
+        val repository = authRepository ?: return
+        val state = _uiState.value
+        if (!state.canSubmitPasswordRecoverySetup) return
+
+        isCompletingPasswordRecovery = true
+        _uiState.value = state.copy(isSubmitting = true, errorMessage = null)
+        viewModelScope.launch {
+            try {
+                repository.completePasswordRecovery(state.newPassword)
+                isCompletingPasswordRecovery = false
+                _uiState.value = _uiState.value.copy(
+                    gateState = AuthGateState.Loading,
+                    password = "",
+                    newPassword = "",
+                    confirmPassword = "",
+                    isSubmitting = false,
+                    passwordRecoveryEmailSent = false,
+                    errorMessage = null
+                )
+                checkAccess(repository)
+            } catch (exception: Exception) {
+                isCompletingPasswordRecovery = false
+                _uiState.value = _uiState.value.copy(
+                    gateState = AuthGateState.PasswordRecoverySetup,
+                    isSubmitting = false,
+                    errorMessage = AuthRepository.passwordRecoveryErrorMessage(exception)
+                )
+            }
+        }
+    }
+
+    private fun cancelPasswordRecovery() {
+        val repository = authRepository ?: return
+        isCompletingPasswordRecovery = false
+        pendingSignedOutMessage = null
+        repository.discardPasswordRecovery()
+        _uiState.value = _uiState.value.copy(
+            gateState = AuthGateState.Loading,
+            password = "",
+            newPassword = "",
+            confirmPassword = "",
+            isSubmitting = false,
+            passwordRecoveryEmailSent = false,
+            errorMessage = null
+        )
+        viewModelScope.launch {
+            runCatching { repository.signOut() }
+            showSignedOut()
+        }
+    }
+
     private fun showInvitationSetup(repository: AuthRepository) {
         _uiState.value = _uiState.value.copy(
             gateState = AuthGateState.InvitationSetup,
             email = repository.currentUserEmail,
             password = "",
             isSubmitting = false,
+            errorMessage = null
+        )
+    }
+
+    private fun showPasswordRecoverySetup(repository: AuthRepository) {
+        _uiState.value = _uiState.value.copy(
+            gateState = AuthGateState.PasswordRecoverySetup,
+            email = repository.currentUserEmail,
+            password = "",
+            isSubmitting = false,
+            passwordRecoveryEmailSent = false,
             errorMessage = null
         )
     }
@@ -233,6 +356,7 @@ class AuthViewModel(
                     newPassword = "",
                     confirmPassword = "",
                     isSubmitting = false,
+                    passwordRecoveryEmailSent = false,
                     errorMessage = null
                 )
             }
@@ -262,6 +386,7 @@ class AuthViewModel(
             password = "",
             newPassword = "",
             confirmPassword = "",
+            passwordRecoveryEmailSent = false,
             errorMessage = null
         )
 
@@ -286,6 +411,7 @@ class AuthViewModel(
             newPassword = "",
             confirmPassword = "",
             isSubmitting = false,
+            passwordRecoveryEmailSent = false,
             errorMessage = message
         )
 
