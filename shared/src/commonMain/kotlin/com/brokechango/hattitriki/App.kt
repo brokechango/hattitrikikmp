@@ -236,6 +236,7 @@ fun App(
             when (currentTopLevelScreen) {
                 Screens.Home -> homeScrollState.scrollTo(0)
                 Screens.History -> historyScrollState.scrollTo(0)
+                Screens.Settings -> Unit
                 Screens.Admin -> adminScrollState.scrollTo(0)
                 is Screens.Players -> Unit
                 else -> error("Only top-level screens can be selected as tabs")
@@ -326,6 +327,7 @@ fun App(
                             ) { topLevelScreen ->
                                 val scrollState = when (topLevelScreen) {
                                     Screens.Home, Screens.History -> null
+                                    Screens.Settings -> null
                                     Screens.Admin -> adminScrollState
                                     is Screens.Players -> null
                                     else -> error("Only top-level screens can be animated as tabs")
@@ -648,7 +650,8 @@ private fun topLevelScreenIndex(screen: Screens): Int = when (screen) {
     Screens.Home -> 0
     Screens.History -> 1
     is Screens.Players -> 2
-    Screens.Admin -> 3
+    Screens.Settings -> 3
+    Screens.Admin -> 4
     else -> error("Only bottom-navigation screens can be animated as tabs: $screen")
 }
 
@@ -814,6 +817,18 @@ private fun MainNavigationBar(
             },
             colors = navItemColors()
         )
+        NavigationBarItem(
+            selected = currentScreen == Screens.Settings,
+            onClick = { onNavigate(HattitrikiTab.Profile) },
+            label = { Text(stringResource(Res.string.navigation_profile)) },
+            icon = {
+                NavigationIcon(
+                    resource = Res.drawable.icon_profile,
+                    contentDescription = stringResource(Res.string.navigation_profile)
+                )
+            },
+            colors = navItemColors()
+        )
         if (isAdmin) {
             NavigationBarItem(
                 selected = currentScreen == Screens.Admin,
@@ -828,18 +843,6 @@ private fun MainNavigationBar(
                 colors = navItemColors()
             )
         }
-        NavigationBarItem(
-            selected = currentScreen == Screens.Settings,
-            onClick = { onNavigate(HattitrikiTab.Profile) },
-            label = { Text(stringResource(Res.string.navigation_profile)) },
-            icon = {
-                NavigationIcon(
-                    resource = Res.drawable.icon_profile,
-                    contentDescription = stringResource(Res.string.navigation_profile)
-                )
-            },
-            colors = navItemColors()
-        )
     }
 }
 
