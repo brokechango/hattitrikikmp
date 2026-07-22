@@ -42,7 +42,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.brokechango.hattitriki.getPlatform
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavyLight
 import com.brokechango.hattitriki.core.design.CrestRed
@@ -296,14 +295,13 @@ private fun RankingTable(
 ) {
     FootballCard(modifier = modifier) {
         BoxWithConstraints {
-            val showInlineRecentForm = showRecentForm &&
-                getPlatform().name == "Web"
-            val useCompactWebRankingLayout = showInlineRecentForm && maxWidth < 640.dp
+            val showInlineRecentForm = showRecentForm
+            val useCompactRankingLayout = showInlineRecentForm && maxWidth < 640.dp
             Column(modifier = Modifier.fillMaxWidth()) {
                 RankingTableHeader(
                     category = category,
                     showInlineRecentForm = showInlineRecentForm,
-                    useCompactWebRankingLayout = useCompactWebRankingLayout
+                    useCompactRankingLayout = useCompactRankingLayout
                 )
                 rankings.forEachIndexed { index, ranking ->
                     RankingRow(
@@ -311,9 +309,8 @@ private fun RankingTable(
                         ranking = ranking,
                         avatarUrl = avatarUrlsByPlayerId[ranking.stats.player.id],
                         category = category,
-                        showRecentForm = showRecentForm,
                         showInlineRecentForm = showInlineRecentForm,
-                        useCompactWebRankingLayout = useCompactWebRankingLayout,
+                        useCompactRankingLayout = useCompactRankingLayout,
                         onClick = { onPlayerSelected(ranking.stats.player.id) }
                     )
                     if (index < rankings.lastIndex) {
@@ -332,7 +329,7 @@ private fun RankingTable(
 private fun RankingTableHeader(
     category: PlayerRankingCategory,
     showInlineRecentForm: Boolean,
-    useCompactWebRankingLayout: Boolean
+    useCompactRankingLayout: Boolean
 ) {
     val columns = rankingTableColumns(category)
     Row(
@@ -345,15 +342,15 @@ private fun RankingTableHeader(
         TableLabel("#", Modifier.width(30.dp), TextAlign.Center)
         Spacer(modifier = Modifier.width(42.dp))
         TableLabel("JUGADOR", Modifier.weight(1f), TextAlign.Start)
-        if (useCompactWebRankingLayout) {
+        if (useCompactRankingLayout) {
+            TableLabel("RACHA", Modifier.width(92.dp).padding(end = 12.dp), TextAlign.Center)
             TableLabel(columns.last().label, Modifier.width(46.dp), TextAlign.End)
-            TableLabel("RACHA", Modifier.width(92.dp), TextAlign.Center)
         } else {
+            if (showInlineRecentForm) {
+                TableLabel("RACHA", Modifier.width(168.dp).padding(end = 12.dp), TextAlign.Start)
+            }
             columns.forEach { column ->
                 TableLabel(column.label, Modifier.width(column.width), column.textAlign)
-            }
-            if (showInlineRecentForm) {
-                TableLabel("RACHA", Modifier.width(168.dp), TextAlign.Start)
             }
         }
     }
@@ -365,9 +362,8 @@ private fun RankingRow(
     ranking: PlayerRankingEntry,
     avatarUrl: String?,
     category: PlayerRankingCategory,
-    showRecentForm: Boolean,
     showInlineRecentForm: Boolean,
-    useCompactWebRankingLayout: Boolean,
+    useCompactRankingLayout: Boolean,
     onClick: () -> Unit
 ) {
     val stats = ranking.stats
@@ -380,7 +376,7 @@ private fun RankingRow(
                 if (rank <= 3) CrestGold.copy(alpha = 0.06f) else Color.Transparent
             )
     ) {
-        if (useCompactWebRankingLayout) {
+        if (useCompactRankingLayout) {
             Row(
                 modifier = Modifier
                     .clickable(onClick = onClick)
@@ -407,15 +403,15 @@ private fun RankingRow(
                         fontWeight = FontWeight.Bold
                     )
                 }
+                CompactRecentFormColumn(
+                    results = ranking.recentForm,
+                    modifier = Modifier.width(92.dp).padding(end = 12.dp)
+                )
                 TableValue(
                     text = columns.last().value(ranking),
                     modifier = Modifier.width(46.dp),
                     textAlign = TextAlign.End,
                     color = CrestGold
-                )
-                CompactRecentFormColumn(
-                    results = ranking.recentForm,
-                    modifier = Modifier.width(92.dp)
                 )
             }
         } else {
@@ -439,6 +435,12 @@ private fun RankingRow(
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = if (rank <= 3) FontWeight.Black else FontWeight.Bold
                 )
+                if (showInlineRecentForm) {
+                    RecentForm(
+                        results = ranking.recentForm,
+                        modifier = Modifier.width(168.dp).padding(end = 12.dp)
+                    )
+                }
                 columns.forEach { column ->
                     TableValue(
                         text = column.value(ranking),
@@ -447,26 +449,6 @@ private fun RankingRow(
                         color = if (column.isPrimaryMetric) CrestGold else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (showInlineRecentForm) {
-                    RecentForm(
-                        results = ranking.recentForm,
-                        modifier = Modifier.width(168.dp).padding(end = 12.dp)
-                    )
-                }
-            }
-        }
-        if (showRecentForm && !showInlineRecentForm) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-            ) {
-                Spacer(modifier = Modifier.width(30.dp))
-                Spacer(modifier = Modifier.weight(1f))
-                RecentForm(
-                    results = ranking.recentForm,
-                    modifier = Modifier.width(168.dp)
-                )
             }
         }
     }
