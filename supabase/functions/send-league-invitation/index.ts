@@ -14,6 +14,23 @@ type InvitationRequest = {
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function readDefaultApiKey(legacyVariable: string, currentVariable: string): string | null {
+  const legacyKey = Deno.env.get(legacyVariable)?.trim();
+  if (legacyKey) return legacyKey;
+
+  const encodedKeys = Deno.env.get(currentVariable);
+  if (!encodedKeys) return null;
+
+  try {
+    const keys = JSON.parse(encodedKeys) as Record<string, unknown>;
+    const defaultKey = keys.default;
+    return typeof defaultKey === "string" && defaultKey.trim().length > 0 ? defaultKey.trim() : null;
+  } catch {
+    console.error(`Could not read ${currentVariable}.`);
+    return null;
+  }
+}
+
 function response(status: number, body: Record<string, string>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -39,8 +56,8 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseAnonKey = readDefaultApiKey("SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEYS");
+  const serviceRoleKey = readDefaultApiKey("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEYS");
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     console.error("Supabase Edge Function environment is incomplete.");
     return response(500, { code: "configuration_error", message: "Server configuration is incomplete" });
