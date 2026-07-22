@@ -1,9 +1,11 @@
 package com.brokechango.hattitriki.feature.auth
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +19,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -159,11 +162,26 @@ private fun LoginCard(uiState: AuthUiState, onEvent: (AuthEvent) -> Unit) {
             ) {
                 Text(if (uiState.isSubmitting) "Entrando…" else "Entrar")
             }
-            TextButton(
+            OutlinedButton(
                 onClick = { onEvent(AuthEvent.OpenPasswordRecovery) },
-                enabled = uiState.isAuthConfigured && !uiState.isSubmitting
+                enabled = uiState.isAuthConfigured && !uiState.isSubmitting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.65f)
+                ),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                contentPadding = PaddingValues(horizontal = 18.dp, vertical = 12.dp)
             ) {
-                Text("¿Has olvidado la contraseña?")
+                Text(
+                    text = "¿Has olvidado la contraseña?",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }
