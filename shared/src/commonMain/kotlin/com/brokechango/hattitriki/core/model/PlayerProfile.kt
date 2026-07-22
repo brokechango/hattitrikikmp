@@ -8,6 +8,7 @@ data class PlayerConnection(
 
 data class PlayerProfileSummary(
     val stats: PlayerStats,
+    val rankingMetrics: PlayerRankingMetrics,
     val maximumRival: PlayerConnection?,
     val inseparableTeammate: PlayerConnection?
 )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -22,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -45,6 +47,7 @@ import com.brokechango.hattitriki.core.design.CrestNavyLight
 import com.brokechango.hattitriki.core.data.AvatarUpload
 import com.brokechango.hattitriki.core.model.PlayerConnection
 import com.brokechango.hattitriki.core.model.PlayerProfileSummary
+import com.brokechango.hattitriki.core.model.PlayerRankingMetrics
 import com.brokechango.hattitriki.core.model.Player
 import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.ui.composables.FootballCard
@@ -53,6 +56,9 @@ import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
 import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import com.github.panpf.sketch.AsyncImage
+import hattitriki.shared.generated.resources.Res
+import hattitriki.shared.generated.resources.icon_edit
+import org.jetbrains.compose.resources.painterResource
 
 @Composable
 fun PlayerProfileScreen(
@@ -110,10 +116,7 @@ private fun PlayerProfileContent(
     val player = summary.stats.player
     var avatarDialog by rememberSaveable { mutableStateOf<AvatarDialog?>(null) }
 
-    ScreenTitle(
-        title = player.name,
-        subtitle = if (isCurrentPlayer) "Tu perfil de jugador" else "Perfil de jugador"
-    )
+    ScreenTitle(title = "Perfil")
     FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -159,6 +162,7 @@ private fun PlayerProfileContent(
         ProfileHint(warning)
     }
     StatisticsCard(summary)
+    RankingMetricsCard(summary)
     Text(
         text = "CONEXIONES EN LA LIGA",
         style = MaterialTheme.typography.labelLarge,
@@ -215,41 +219,47 @@ private fun PlayerAvatar(
     Box(
         modifier = Modifier
             .size(size)
-            .clip(CircleShape)
-            .background(CrestNavyLight)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
-        if (avatarUrl != null) {
-            AsyncImage(
-                uri = avatarUrl,
-                contentDescription = "Foto de perfil de $name",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        } else {
-            Text(
-                text = name.initials(),
-                style = MaterialTheme.typography.headlineSmall,
-                color = CrestGold,
-                fontWeight = FontWeight.Black
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(CircleShape)
+                .background(CrestNavyLight),
+            contentAlignment = Alignment.Center
+        ) {
+            if (avatarUrl != null) {
+                AsyncImage(
+                    uri = avatarUrl,
+                    contentDescription = "Foto de perfil de $name",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Text(
+                    text = name.initials(),
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = CrestGold,
+                    fontWeight = FontWeight.Black
+                )
+            }
         }
         if (onClick != null) {
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .padding(4.dp),
-                shape = RoundedCornerShape(8.dp),
+                shape = CircleShape,
                 color = CrestGold,
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shadowElevation = 2.dp
             ) {
-                Text(
-                    text = "VER",
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.Black
+                Icon(
+                    painter = painterResource(Res.drawable.icon_edit),
+                    contentDescription = "Editar foto de perfil",
+                    modifier = Modifier.padding(7.dp).size(16.dp),
+                    tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
         }
@@ -548,6 +558,75 @@ private fun StatisticsCard(summary: PlayerProfileSummary) {
 }
 
 @Composable
+private fun RankingMetricsCard(summary: PlayerProfileSummary) {
+    val stats = summary.stats
+    val metrics = summary.rankingMetrics
+    FootballCard(modifier = Modifier.fillMaxWidth()) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(
+                text = "MÉTRICAS DE RANKINGS",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(CrestNavyLight.copy(alpha = 0.62f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Black
+            )
+            RankingMetricRow(
+                metrics = listOf(
+                    RankingMetric("GOLES", stats.goals.toString(), CrestGold),
+                    RankingMetric("G/P", formatRankingDecimal(metrics.goalsPerMatch), CrestGold),
+                    RankingMetric("PJ", stats.matchesPlayed.toString())
+                ),
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            RankingMetricRow(
+                metrics = listOf(
+                    RankingMetric("GC", metrics.goalsAgainst?.let(::formatRankingGoalTotal) ?: "—"),
+                    RankingMetric("GC/P", metrics.goalsAgainstPerMatch?.let(::formatRankingDecimal) ?: "—"),
+                    RankingMetric("VICTORIAS", stats.wins.toString(), Color(0xFF45B978))
+                ),
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            RankingMetricRow(
+                metrics = listOf(RankingMetric("TOTAL", metrics.totalPerformance.toString(), CrestGold)),
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 14.dp)
+            )
+        }
+    }
+}
+
+private data class RankingMetric(
+    val label: String,
+    val value: String,
+    val color: Color? = null
+)
+
+@Composable
+private fun RankingMetricRow(metrics: List<RankingMetric>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        if (metrics.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+        metrics.forEach { metric ->
+            StatValue(
+                metric.label,
+                metric.value,
+                Modifier.weight(1f),
+                metric.color ?: MaterialTheme.colorScheme.onSurface
+            )
+        }
+        repeat(3 - metrics.size) {
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
 private fun StatValue(label: String, value: String, modifier: Modifier, color: Color = MaterialTheme.colorScheme.onSurface) {
     Column(
         modifier = modifier.heightIn(min = 54.dp),
@@ -557,6 +636,14 @@ private fun StatValue(label: String, value: String, modifier: Modifier, color: C
         Text(value, style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Black)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+private fun formatRankingDecimal(value: Double): String =
+    (kotlin.math.round(value * 10) / 10).toString()
+
+private fun formatRankingGoalTotal(value: Double): String {
+    val roundedValue = kotlin.math.round(value * 10) / 10
+    return if (roundedValue % 1.0 == 0.0) roundedValue.toInt().toString() else roundedValue.toString()
 }
 
 @Composable
@@ -638,6 +725,13 @@ private fun PlayerProfileScreenPreview() {
             losses = 2,
             goals = 15,
             goalkeeperMatches = 1
+        ),
+        rankingMetrics = PlayerRankingMetrics(
+            goalsPerMatch = 1.3,
+            goalsAgainst = 2.0,
+            goalsAgainstPerMatch = 2.0,
+            assignedGoalsAgainst = 2,
+            totalPerformance = 38
         ),
         maximumRival = PlayerConnection(Player("2", "Marta"), matches = 8, isTied = false),
         inseparableTeammate = PlayerConnection(Player("3", "Nico"), matches = 9, isTied = false)

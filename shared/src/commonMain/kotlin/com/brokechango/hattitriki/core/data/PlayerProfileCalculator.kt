@@ -10,7 +10,9 @@ import com.brokechango.hattitriki.core.model.PlayerProfileSummary
  * of the players appeared for both teams.
  */
 fun FootballSnapshot.playerProfileSummary(playerId: String): PlayerProfileSummary? {
-    val stats = playerStats().firstOrNull { it.player.id == playerId } ?: return null
+    val leagueStats = playerStats()
+    val stats = leagueStats.firstOrNull { it.player.id == playerId } ?: return null
+    val rankingMetrics = playerRankingMetricsByPlayerId(leagueStats).getValue(playerId)
     val teammates = mutableMapOf<String, Int>()
     val rivals = mutableMapOf<String, Int>()
 
@@ -41,6 +43,7 @@ fun FootballSnapshot.playerProfileSummary(playerId: String): PlayerProfileSummar
     val playersById = players.associateBy(Player::id)
     return PlayerProfileSummary(
         stats = stats,
+        rankingMetrics = rankingMetrics,
         maximumRival = bestConnection(rivals, playersById),
         inseparableTeammate = bestConnection(teammates, playersById)
     )

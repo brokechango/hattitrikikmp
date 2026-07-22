@@ -111,8 +111,6 @@ import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
 import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileScreen
 import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileViewModel
-import com.brokechango.hattitriki.feature.settings.SettingsScreen
-import com.brokechango.hattitriki.feature.settings.SettingsViewModel
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import hattitriki.shared.generated.resources.hattitriki_app_icon
@@ -523,18 +521,21 @@ fun App(
                                 }
 
                                 entry<Screens.Settings> {
-                                    val settingsViewModel = remember(
+                                    val ownPlayerProfileViewModel = remember(
                                         footballRepository,
                                         playerProfileRepository
                                     ) {
-                                        SettingsViewModel(
+                                        PlayerProfileViewModel(
+                                            playerId = null,
                                             footballRepository = footballRepository,
                                             profileRepository = playerProfileRepository
                                         )
                                     }
-                                    SettingsScreen(
-                                        viewModel = settingsViewModel,
-                                        accountEmail = access.email
+                                    PlayerProfileScreen(
+                                        viewModel = ownPlayerProfileViewModel,
+                                        onPlayerSelected = { playerId ->
+                                            navigation.navigate(Screens.PlayerProfile(playerId))
+                                        }
                                     )
                                 }
 
@@ -716,7 +717,7 @@ private fun MatchTopBar(
 @Composable
 private fun topBarTitle(screen: Screens): String = when (screen) {
     is Screens.PlayerProfile -> "Perfil de jugador"
-    Screens.Settings -> "Ajustes"
+    Screens.Settings -> "Perfil de jugador"
     else -> stringResource(when (screen) {
         Screens.Home -> Res.string.app_title
         Screens.History -> Res.string.top_bar_history
@@ -753,7 +754,7 @@ private fun AccountMenu(onOpenSettings: () -> Unit, onLogout: () -> Unit) {
             onDismissRequest = { expanded.value = false }
         ) {
             DropdownMenuItem(
-                text = { Text("Ajustes") },
+                text = { Text("Perfil") },
                 onClick = {
                     expanded.value = false
                     onOpenSettings()

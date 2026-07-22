@@ -1,6 +1,7 @@
 package com.brokechango.hattitriki.core.data
 
 import com.brokechango.hattitriki.core.model.FriendlyMatch
+import com.brokechango.hattitriki.core.model.GoalEntry
 import com.brokechango.hattitriki.core.model.MatchPlayer
 import com.brokechango.hattitriki.core.model.Player
 import com.brokechango.hattitriki.core.model.TeamSide
@@ -53,6 +54,38 @@ class PlayerProfileCalculatorTest {
 
         assertEquals(1, summary.maximumRival?.matches)
         assertEquals(1, summary.inseparableTeammate?.matches)
+    }
+
+    @Test
+    fun `profile exposes the same metrics used by every ranking filter`() {
+        val alex = Player("a", "Álex")
+        val bruno = Player("b", "Bruno")
+        val snapshot = FootballSnapshot(
+            players = listOf(alex, bruno),
+            matches = listOf(
+                FriendlyMatch(
+                    id = "1",
+                    dateLabel = "1",
+                    teamAScore = 2,
+                    teamBScore = 1,
+                    players = listOf(
+                        MatchPlayer(alex.id, TeamSide.A, wasGoalkeeper = true),
+                        MatchPlayer(bruno.id, TeamSide.B, wasGoalkeeper = true)
+                    ),
+                    goals = listOf(
+                        GoalEntry(alex.id, TeamSide.A, count = 2, goalkeeperId = bruno.id),
+                        GoalEntry(bruno.id, TeamSide.B, count = 1, goalkeeperId = alex.id)
+                    )
+                )
+            )
+        )
+
+        val metrics = assertNotNull(snapshot.playerProfileSummary(alex.id)).rankingMetrics
+
+        assertEquals(2.0, metrics.goalsPerMatch)
+        assertEquals(1.0, metrics.goalsAgainst)
+        assertEquals(1.0, metrics.goalsAgainstPerMatch)
+        assertEquals(5, metrics.totalPerformance)
     }
 
     private fun match(id: String, vararg participants: Pair<String, TeamSide>) = FriendlyMatch(

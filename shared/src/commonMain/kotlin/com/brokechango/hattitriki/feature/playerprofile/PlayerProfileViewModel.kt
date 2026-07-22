@@ -6,6 +6,7 @@ import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
 import com.brokechango.hattitriki.core.data.AvatarUpload
 import com.brokechango.hattitriki.core.data.AvatarUploadResult
+import com.brokechango.hattitriki.core.data.CurrentPlayerIdResult
 import com.brokechango.hattitriki.core.data.PlayerProfileMetadata
 import com.brokechango.hattitriki.core.data.PlayerProfileMetadataResult
 import com.brokechango.hattitriki.core.data.PlayerProfileRepository
@@ -30,7 +31,7 @@ data class PlayerProfileUiState(
 )
 
 class PlayerProfileViewModel(
-    private val playerId: String,
+    private val playerId: String?,
     private val footballRepository: FriendlyFootballRepository?,
     private val profileRepository: PlayerProfileRepository?
 ) : ViewModel() {
@@ -54,6 +55,24 @@ class PlayerProfileViewModel(
                 return@launch
             }
 
+            val resolvedPlayerId = playerId ?: when (val currentPlayerResult = metadataRepository.loadCurrentPlayerId()) {
+                is CurrentPlayerIdResult.Success -> currentPlayerResult.playerId
+                CurrentPlayerIdResult.NotLinked -> {
+                    _uiState.value = PlayerProfileUiState(
+                        isLoading = false,
+                        errorMessage = "Tu cuenta todavía no está vinculada a un jugador de la liga."
+                    )
+                    return@launch
+                }
+                is CurrentPlayerIdResult.Failure -> {
+                    _uiState.value = PlayerProfileUiState(
+                        isLoading = false,
+                        errorMessage = currentPlayerResult.message
+                    )
+                    return@launch
+                }
+            }
+
             when (val snapshotResult = withContext(Dispatchers.Default) { leagueRepository.loadSnapshot() }) {
                 is FootballSnapshotResult.Failure -> _uiState.value = PlayerProfileUiState(
                     isLoading = false,
@@ -61,7 +80,7 @@ class PlayerProfileViewModel(
                 )
                 is FootballSnapshotResult.Success -> {
                     val summary = withContext(Dispatchers.Default) {
-                        snapshotResult.snapshot.playerProfileSummary(playerId)
+                        snapshotResult.snapshot.playerProfileSummary(resolvedPlayerId)
                     }
                     if (summary == null) {
                         _uiState.value = PlayerProfileUiState(
@@ -71,7 +90,7 @@ class PlayerProfileViewModel(
                         return@launch
                     }
 
-                    when (val metadataResult = metadataRepository.loadMetadata(playerId)) {
+                    when (val metadataResult = metadataRepository.loadMetadata(resolvedPlayerId)) {
                         is PlayerProfileMetadataResult.Success -> _uiState.value = PlayerProfileUiState(
                             isLoading = false,
                             summary = summary,
@@ -105,7 +124,10 @@ class PlayerProfileViewModel(
         )
         viewModelScope.launch {
             when (val result = repository.uploadOwnAvatar(avatar)) {
-                AvatarUploadResult.Success -> refreshAvatarMetadata(repository)
+                AvatarUploadResult.Success -> refreshAvatarMetadata(
+                    repository = repository,
+                    playerId = checkNotNull(state.metadata).playerId
+                )
                 is AvatarUploadResult.Failure -> _uiState.value = _uiState.value.copy(
                     isUploadingAvatar = false,
                     avatarErrorMessage = result.message
@@ -121,7 +143,7 @@ class PlayerProfileViewModel(
         )
     }
 
-    private suspend fun refreshAvatarMetadata(repository: PlayerProfileRepository) {
+    private suspend fun refreshAvatarMetadata(repository: PlayerProfileRepository, playerId: String) {
         when (val metadataResult = repository.loadMetadata(playerId)) {
             is PlayerProfileMetadataResult.Success -> _uiState.value = _uiState.value.copy(
                 isUploadingAvatar = false,
