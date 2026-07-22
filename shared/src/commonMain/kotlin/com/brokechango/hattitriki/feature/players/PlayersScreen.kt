@@ -298,10 +298,12 @@ private fun RankingTable(
         BoxWithConstraints {
             val showInlineRecentForm = showRecentForm &&
                 getPlatform().name == "Web"
+            val useCompactWebRankingLayout = showInlineRecentForm && maxWidth < 640.dp
             Column(modifier = Modifier.fillMaxWidth()) {
                 RankingTableHeader(
                     category = category,
-                    showInlineRecentForm = showInlineRecentForm
+                    showInlineRecentForm = showInlineRecentForm,
+                    useCompactWebRankingLayout = useCompactWebRankingLayout
                 )
                 rankings.forEachIndexed { index, ranking ->
                     RankingRow(
@@ -311,6 +313,7 @@ private fun RankingTable(
                         category = category,
                         showRecentForm = showRecentForm,
                         showInlineRecentForm = showInlineRecentForm,
+                        useCompactWebRankingLayout = useCompactWebRankingLayout,
                         onClick = { onPlayerSelected(ranking.stats.player.id) }
                     )
                     if (index < rankings.lastIndex) {
@@ -328,7 +331,8 @@ private fun RankingTable(
 @Composable
 private fun RankingTableHeader(
     category: PlayerRankingCategory,
-    showInlineRecentForm: Boolean
+    showInlineRecentForm: Boolean,
+    useCompactWebRankingLayout: Boolean
 ) {
     val columns = rankingTableColumns(category)
     Row(
@@ -341,11 +345,16 @@ private fun RankingTableHeader(
         TableLabel("#", Modifier.width(30.dp), TextAlign.Center)
         Spacer(modifier = Modifier.width(42.dp))
         TableLabel("JUGADOR", Modifier.weight(1f), TextAlign.Start)
-        columns.forEach { column ->
-            TableLabel(column.label, Modifier.width(column.width), column.textAlign)
-        }
-        if (showInlineRecentForm) {
-            TableLabel("RACHA", Modifier.width(168.dp), TextAlign.Start)
+        if (useCompactWebRankingLayout) {
+            TableLabel(columns.last().label, Modifier.width(46.dp), TextAlign.End)
+            TableLabel("RACHA", Modifier.width(92.dp), TextAlign.Center)
+        } else {
+            columns.forEach { column ->
+                TableLabel(column.label, Modifier.width(column.width), column.textAlign)
+            }
+            if (showInlineRecentForm) {
+                TableLabel("RACHA", Modifier.width(168.dp), TextAlign.Start)
+            }
         }
     }
 }
@@ -358,6 +367,7 @@ private fun RankingRow(
     category: PlayerRankingCategory,
     showRecentForm: Boolean,
     showInlineRecentForm: Boolean,
+    useCompactWebRankingLayout: Boolean,
     onClick: () -> Unit
 ) {
     val stats = ranking.stats
@@ -370,39 +380,79 @@ private fun RankingRow(
                 if (rank <= 3) CrestGold.copy(alpha = 0.06f) else Color.Transparent
             )
     ) {
-        Row(
-            modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(horizontal = 12.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            RankNumber(rank = rank, modifier = Modifier.width(30.dp))
-            RankingPlayerAvatar(
-                name = stats.player.name,
-                avatarUrl = avatarUrl
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = stats.player.name,
-                modifier = Modifier.weight(1f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = if (rank <= 3) FontWeight.Black else FontWeight.Bold
-            )
-            columns.forEach { column ->
+        if (useCompactWebRankingLayout) {
+            Row(
+                modifier = Modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 12.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RankNumber(rank = rank, modifier = Modifier.width(30.dp))
+                RankingPlayerAvatar(name = stats.player.name, avatarUrl = avatarUrl)
+                Spacer(modifier = Modifier.width(8.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = stats.player.name,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (rank <= 3) FontWeight.Black else FontWeight.Bold
+                    )
+                    Text(
+                        text = rankingSupportingMetricsText(ranking, columns),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 TableValue(
-                    text = column.value(ranking),
-                    modifier = Modifier.width(column.width),
-                    textAlign = column.textAlign,
-                    color = if (column.isPrimaryMetric) CrestGold else MaterialTheme.colorScheme.onSurfaceVariant
+                    text = columns.last().value(ranking),
+                    modifier = Modifier.width(46.dp),
+                    textAlign = TextAlign.End,
+                    color = CrestGold
+                )
+                CompactRecentFormColumn(
+                    results = ranking.recentForm,
+                    modifier = Modifier.width(92.dp)
                 )
             }
-            if (showInlineRecentForm) {
-                RecentForm(
-                    results = ranking.recentForm,
-                    modifier = Modifier.width(168.dp).padding(end = 12.dp)
+        } else {
+            Row(
+                modifier = Modifier
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 12.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RankNumber(rank = rank, modifier = Modifier.width(30.dp))
+                RankingPlayerAvatar(
+                    name = stats.player.name,
+                    avatarUrl = avatarUrl
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stats.player.name,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (rank <= 3) FontWeight.Black else FontWeight.Bold
+                )
+                columns.forEach { column ->
+                    TableValue(
+                        text = column.value(ranking),
+                        modifier = Modifier.width(column.width),
+                        textAlign = column.textAlign,
+                        color = if (column.isPrimaryMetric) CrestGold else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (showInlineRecentForm) {
+                    RecentForm(
+                        results = ranking.recentForm,
+                        modifier = Modifier.width(168.dp).padding(end = 12.dp)
+                    )
+                }
             }
         }
         if (showRecentForm && !showInlineRecentForm) {
@@ -496,6 +546,45 @@ private fun RecentForm(
     }
 }
 
+@Composable
+private fun CompactRecentFormColumn(
+    results: List<PlayerMatchResult>,
+    modifier: Modifier = Modifier
+) {
+    if (results.isEmpty()) {
+        Text(
+            text = "—",
+            modifier = modifier,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        return
+    }
+
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        results.take(5).forEach { result ->
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .background(result.backgroundColor(), RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = result.label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = result.contentColor(),
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+    }
+}
+
 private fun PlayerMatchResult.backgroundColor(): Color = when (this) {
     PlayerMatchResult.WIN -> Color(0xFF45B978)
     PlayerMatchResult.DRAW -> Color(0xFFD1D7DE)
@@ -536,6 +625,8 @@ private fun TableLabel(
         text = text,
         modifier = modifier,
         textAlign = textAlign,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontWeight = FontWeight.Black
@@ -558,6 +649,13 @@ private fun TableValue(
         fontWeight = FontWeight.Bold
     )
 }
+
+private fun rankingSupportingMetricsText(
+    ranking: PlayerRankingEntry,
+    columns: List<RankingTableColumn>
+): String = columns
+    .dropLast(1)
+    .joinToString(separator = " · ") { column -> "${column.label} ${column.value(ranking)}" }
 
 private data class RankingTableColumn(
     val label: String,
