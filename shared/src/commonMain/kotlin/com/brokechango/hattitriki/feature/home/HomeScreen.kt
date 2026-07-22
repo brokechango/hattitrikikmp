@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -530,10 +529,10 @@ private fun FeaturedPlayerBackground(
         uri = avatarUrl,
         contentDescription = null,
         modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth(0.56f)
+            .fillMaxSize()
             .graphicsLayer(alpha = 0.18f),
-        contentScale = ContentScale.Crop
+        contentScale = ContentScale.Crop,
+        alignment = Alignment.Center
     )
 }
 
