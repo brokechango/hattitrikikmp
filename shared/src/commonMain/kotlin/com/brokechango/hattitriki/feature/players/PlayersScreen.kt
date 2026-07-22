@@ -401,6 +401,12 @@ private fun RankingRow(
                 TableValue(stats.draws.toString(), Modifier.width(28.dp))
                 TableValue(stats.losses.toString(), Modifier.width(28.dp))
             }
+             if (showInlineRecentForm) {
+                RecentForm(
+                    results = ranking.recentForm,
+                    modifier = Modifier.width(168.dp).padding(end = 12.dp)
+                )
+            }
             Text(
                 text = ranking.value,
                 modifier = Modifier.width(54.dp),
@@ -410,12 +416,7 @@ private fun RankingRow(
                 color = CrestGold,
                 fontWeight = FontWeight.Black
             )
-            if (showInlineRecentForm) {
-                RecentForm(
-                    results = ranking.recentForm,
-                    modifier = Modifier.width(168.dp)
-                )
-            }
+
         }
         if (showRecentForm && !showInlineRecentForm) {
             Row(
