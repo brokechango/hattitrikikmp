@@ -34,12 +34,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestRed
 import com.brokechango.hattitriki.core.model.GoalEntry
+import com.brokechango.hattitriki.core.model.FriendlyMatch
+import com.brokechango.hattitriki.core.model.MatchPlayer
+import com.brokechango.hattitriki.core.model.Player
 import com.brokechango.hattitriki.core.model.TeamSide
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.emoji_football
 import org.jetbrains.compose.resources.painterResource
@@ -414,5 +419,52 @@ private fun GoalkeeperGlove(
             size = Size(size.width * 0.24f, size.height * 0.19f),
             cornerRadius = CornerRadius(size.width * 0.08f, size.width * 0.08f)
         )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun MatchDetailScreenPreview() {
+    val players = listOf(
+        Player("1", "Arturo"),
+        Player("2", "Marta"),
+        Player("3", "Nico"),
+        Player("4", "Laura")
+    )
+    val match = FriendlyMatch(
+        id = "match-1",
+        dateLabel = "22 jul 2026",
+        teamAScore = 2,
+        teamBScore = 1,
+        players = listOf(
+            MatchPlayer("1", TeamSide.A, wasGoalkeeper = true),
+            MatchPlayer("2", TeamSide.A),
+            MatchPlayer("3", TeamSide.B, wasGoalkeeper = true),
+            MatchPlayer("4", TeamSide.B)
+        ),
+        goals = listOf(
+            GoalEntry("2", TeamSide.A, count = 2, goalkeeperId = "3"),
+            GoalEntry("4", TeamSide.B, count = 1, goalkeeperId = "1")
+        )
+    )
+    val state = MatchDetailUiState(
+        match = match,
+        playersById = players.associateBy(Player::id),
+        isLoading = false
+    )
+
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            ScreenTitle(title = match.dateLabel, subtitle = "Acta del partido y alineaciones.")
+            MatchScoreboard(match.teamAScore, match.teamBScore, match.penaltyShootout)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                TeamCard("Equipo A", TeamSide.A, state, Modifier.weight(1f))
+                TeamCard("Equipo B", TeamSide.B, state, Modifier.weight(1f))
+            }
+            GoalsSummary(uiState = state)
+        }
     }
 }

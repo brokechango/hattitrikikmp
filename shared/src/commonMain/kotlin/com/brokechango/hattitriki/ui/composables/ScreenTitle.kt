@@ -3,6 +3,7 @@ package com.brokechango.hattitriki.ui.composables
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +13,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.brokechango.hattitriki.core.design.CrestGold
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 @Composable
 fun ScreenTitle(
@@ -39,5 +42,17 @@ fun ScreenTitle(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun ScreenTitlePreview() {
+    HattitrikiPreview {
+        ScreenTitle(
+            title = "Clasificaciones",
+            subtitle = "Consulta los líderes de cada estadística.",
+            modifier = Modifier.padding(20.dp)
+        )
     }
 }

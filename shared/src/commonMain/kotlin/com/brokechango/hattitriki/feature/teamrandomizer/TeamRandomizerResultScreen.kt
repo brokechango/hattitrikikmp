@@ -25,6 +25,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import kotlin.math.roundToInt
 
 @Composable
@@ -341,3 +343,41 @@ private fun MissingResult(onBack: () -> Unit) {
 
 private fun teamLetter(index: Int): String =
     if (index in 0..25) ('A'.code + index).toChar().toString() else (index + 1).toString()
+
+@PreviewTargets
+@Composable
+private fun TeamRandomizerResultScreenPreview() {
+    val participants = listOf(
+        TeamParticipant("1", "Arturo", hasCardio = true, statsScore = 24.0),
+        TeamParticipant("2", "Marta", statsScore = 19.0),
+        TeamParticipant("3", "Nico", hasCardio = true, statsScore = 22.0),
+        TeamParticipant("4", "Laura", statsScore = 18.0)
+    )
+    val state = TeamRandomizerUiState(
+        selectedPlayerIds = participants.mapTo(mutableSetOf(), TeamParticipant::id),
+        registeredPlayers = participants,
+        statsAvailable = true,
+        balanceStats = true,
+        teams = listOf(
+            RandomTeam("Equipo A", listOf(participants[0], participants[3])),
+            RandomTeam("Equipo B", listOf(participants[1], participants[2]))
+        )
+    )
+
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            ScreenTitle(
+                title = "Equipos listos",
+                subtitle = "Revisa el reparto antes de preparar el próximo partido."
+            )
+            ResultSummary(state)
+            ResultActions(uiState = state, onReroll = {}, onSave = {})
+            state.teams.forEachIndexed { index, team ->
+                TeamResultCard(team = team, teamIndex = index, showStats = true)
+            }
+        }
+    }
+}

@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.PitchBackground
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.hattitriki_app_icon
@@ -184,6 +186,22 @@ private fun LoginCard(uiState: AuthUiState, onEvent: (AuthEvent) -> Unit) {
                 )
             }
         }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun AuthScreenPreview() {
+    HattitrikiPreview {
+        AuthScreen(
+            uiState = AuthUiState(
+                gateState = AuthGateState.SignedOut,
+                email = "arturo@hattitriki.com",
+                password = "contraseña"
+            ),
+            onEvent = {},
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }
 

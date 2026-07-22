@@ -26,6 +26,8 @@ import com.brokechango.hattitriki.ui.composables.PenaltyScore
 import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -155,6 +157,50 @@ private fun HistoryMatchCard(
                         score = "${it.teamAScore} - ${it.teamBScore}",
                         modifier = Modifier.fillMaxWidth()
                     )
+                }
+            }
+        }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun HistoryScreenPreview() {
+    val matches = listOf(
+        FriendlyMatch("1", "22 jul 2026", 4, 3, emptyList(), emptyList()),
+        FriendlyMatch("2", "15 jul 2026", 2, 2, emptyList(), emptyList())
+    )
+    HattitrikiPreview {
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val columns = if (maxWidth >= 900.dp) 2 else 1
+            Column(
+                modifier = Modifier.fillMaxSize().padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ScreenTitle(
+                    title = "Historial",
+                    subtitle = "Consulta todos los partidos jugados."
+                )
+                Text(
+                    text = "PARTIDOS FINALIZADOS",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Black
+                )
+                matches.chunked(columns).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        row.forEach { match ->
+                            HistoryMatchCard(
+                                match = match,
+                                onClick = {},
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        repeat(columns - row.size) { Box(modifier = Modifier.weight(1f)) }
+                    }
                 }
             }
         }

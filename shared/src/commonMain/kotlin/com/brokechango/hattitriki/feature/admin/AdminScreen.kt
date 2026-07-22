@@ -3,6 +3,7 @@ package com.brokechango.hattitriki.feature.admin
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +16,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -99,6 +102,23 @@ fun AdminScreen(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.End,
             modifier = Modifier.fillMaxWidth()
+        )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun AdminScreenPreview() {
+    HattitrikiPreview {
+        AdminScreen(
+            appVersion = "1.0.0",
+            onNewMatch = {},
+            onAddPlayer = {},
+            onManageMatches = {},
+            onManagePlayers = {},
+            onInviteLeagueMember = {},
+            onTeamRandomizer = {},
+            modifier = Modifier.fillMaxSize().padding(20.dp)
         )
     }
 }

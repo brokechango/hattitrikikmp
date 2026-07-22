@@ -20,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 @Composable
 fun NewPlayerScreen(
@@ -115,6 +117,31 @@ private fun NewPlayerForm(
                     }
                 )
             }
+        }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun NewPlayerScreenPreview() {
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ScreenTitle(
+                title = "Añadir jugador",
+                subtitle = "Da de alta un jugador para la liga."
+            )
+            NewPlayerForm(
+                uiState = NewPlayerUiState(
+                    isCheckingAccess = false,
+                    isAdmin = true,
+                    name = "Arturo",
+                    hasCardio = true
+                ),
+                onEvent = {}
+            )
         }
     }
 }

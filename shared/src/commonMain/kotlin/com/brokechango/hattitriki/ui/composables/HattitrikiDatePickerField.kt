@@ -22,6 +22,8 @@ import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavy
 import com.brokechango.hattitriki.core.design.CrestWhite
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import org.jetbrains.compose.resources.stringResource
@@ -91,6 +93,18 @@ fun HattitrikiDatePickerField(
         ) {
             DatePicker(state = datePickerState)
         }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun HattitrikiDatePickerFieldPreview() {
+    HattitrikiPreview {
+        HattitrikiDatePickerField(
+            value = "2026-07-22",
+            onDateSelected = {},
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        )
     }
 }
 

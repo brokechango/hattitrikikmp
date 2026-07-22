@@ -25,6 +25,8 @@ import com.brokechango.hattitriki.core.data.EditPlayerResult
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -143,5 +145,40 @@ fun ManagePlayersScreen(
             confirmButton = { Button(onClick = viewModel::confirmDelete) { Text("Borrar") } },
             dismissButton = { TextButton(onClick = viewModel::dismissDelete) { Text("Cancelar") } }
         )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun ManagePlayersScreenPreview() {
+    val players = listOf(
+        AdminPlayer("1", "Arturo", isActive = true, hasCardio = true),
+        AdminPlayer("2", "Marta", isActive = true)
+    )
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScreenTitle(
+                title = "Gestionar jugadores",
+                subtitle = "Edita nombres o borra jugadores sin historial."
+            )
+            players.forEach { player ->
+                FootballCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(player.name, style = MaterialTheme.typography.titleMedium)
+                        if (player.hasCardio) Text("En buena forma física", style = MaterialTheme.typography.labelMedium)
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Editar") }
+                            TextButton(onClick = {}) { Text("Borrar") }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

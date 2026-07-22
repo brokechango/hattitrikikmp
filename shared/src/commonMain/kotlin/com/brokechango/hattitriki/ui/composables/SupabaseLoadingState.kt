@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
@@ -35,6 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.brokechango.hattitriki.core.design.CrestGold
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.emoji_football
 import org.jetbrains.compose.resources.painterResource
@@ -130,6 +133,17 @@ fun SupabaseLoadingState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun SupabaseLoadingStatePreview() {
+    HattitrikiPreview {
+        SupabaseLoadingState(
+            message = "Cargando las clasificaciones…",
+            modifier = Modifier.fillMaxSize()
         )
     }
 }

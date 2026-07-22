@@ -3,6 +3,7 @@ package com.brokechango.hattitriki.ui.composables
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -13,6 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 @Composable
 fun StatRow(
@@ -30,5 +33,17 @@ fun StatRow(
     ) {
         Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(value, fontWeight = FontWeight.Bold)
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun StatRowPreview() {
+    HattitrikiPreview {
+        StatRow(
+            label = "Partidos jugados",
+            value = "12",
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
+        )
     }
 }

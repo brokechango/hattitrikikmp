@@ -41,6 +41,8 @@ import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.HattitrikiDatePickerField
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 private enum class MatchCreationStep(val label: String) {
     MATCH("Partido"),
@@ -788,6 +790,47 @@ private fun NewMatchUiState.requirementFor(step: MatchCreationStep): String? = w
                 "hay más goles asignados que los indicados para el Equipo B."
             !hasValidGoals -> "revisa los goleadores y porteros seleccionados."
             else -> null
+        }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun NewMatchScreenPreview() {
+    val players = listOf(
+        AdminPlayer("1", "Arturo", isActive = true),
+        AdminPlayer("2", "Marta", isActive = true),
+        AdminPlayer("3", "Nico", isActive = true),
+        AdminPlayer("4", "Laura", isActive = true)
+    )
+    val state = NewMatchUiState(
+        isCheckingAccess = false,
+        isAdmin = true,
+        players = players,
+        date = "2026-07-22",
+        teamAScore = "2",
+        teamBScore = "1",
+        teamAPlayerIds = listOf("1", "2"),
+        teamBPlayerIds = listOf("3", "4"),
+        goalkeeperAIds = listOf("1"),
+        goalkeeperBIds = listOf("3")
+    )
+
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ScreenTitle(
+                title = "Nueva acta",
+                subtitle = "Completa partido, equipos y goles en tres pasos."
+            )
+            MatchReportFlow(
+                uiState = state,
+                currentStep = MatchCreationStep.MATCH,
+                onStepSelected = {},
+                onEvent = {}
+            )
         }
     }
 }

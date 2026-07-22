@@ -34,6 +34,8 @@ import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 @Composable
 fun TeamRandomizerScreen(
@@ -579,5 +581,36 @@ private fun ErrorMessage(message: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.error
         )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun TeamRandomizerScreenPreview() {
+    val participants = listOf(
+        TeamParticipant("1", "Arturo", hasCardio = true, statsScore = 24.0),
+        TeamParticipant("2", "Marta", statsScore = 19.0),
+        TeamParticipant("3", "Nico", hasCardio = true, statsScore = 22.0),
+        TeamParticipant("4", "Laura", statsScore = 18.0)
+    )
+    val state = TeamRandomizerUiState(
+        selectedPlayerIds = participants.mapTo(mutableSetOf(), TeamParticipant::id),
+        registeredPlayers = participants,
+        statsAvailable = true,
+        balanceStats = true
+    )
+
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            ScreenTitle(
+                title = "Generador de equipos",
+                subtitle = "Selecciona quién juega hoy y prepara un reparto equilibrado."
+            )
+            RosterSection(uiState = state, onEvent = {})
+            SetupSection(uiState = state, onEvent = {}, onResultReady = {})
+        }
     }
 }

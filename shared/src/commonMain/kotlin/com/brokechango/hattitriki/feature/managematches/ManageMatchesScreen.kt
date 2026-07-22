@@ -25,6 +25,8 @@ import com.brokechango.hattitriki.core.data.EditMatchResult
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -148,3 +150,38 @@ private val AdminMatchSummary.penaltyShootoutLabel: String
     } else {
         ""
     }
+
+@PreviewTargets
+@Composable
+private fun ManageMatchesScreenPreview() {
+    val matches = listOf(
+        AdminMatchSummary("1", "22 jul 2026", 2, 1),
+        AdminMatchSummary("2", "15 jul 2026", 3, 3, teamAPenaltyScore = 4, teamBPenaltyScore = 2)
+    )
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScreenTitle(
+                title = "Gestionar partidos",
+                subtitle = "Edita o borra actas y sus datos asociados."
+            )
+            matches.forEach { match ->
+                FootballCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(match.playedOn, style = MaterialTheme.typography.titleMedium)
+                        Text("Equipo A ${match.teamAScore} - ${match.teamBScore} Equipo B${match.penaltyShootoutLabel}")
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Editar") }
+                            TextButton(onClick = {}) { Text("Borrar") }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

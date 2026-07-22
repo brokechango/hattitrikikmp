@@ -1,5 +1,8 @@
 package com.brokechango.hattitriki.ui.composables
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 
 @Composable
 fun ScorePill(
@@ -44,4 +49,18 @@ fun PenaltyScore(
         color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.Black
     )
+}
+
+@PreviewTargets
+@Composable
+private fun ScorePillPreview() {
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            ScorePill(score = "4")
+            PenaltyScore(score = "3 - 2")
+        }
+    }
 }
