@@ -50,7 +50,7 @@ fun ScreenTitle(
 private fun ScreenTitlePreview() {
     HattitrikiPreview {
         ScreenTitle(
-            title = "Clasificaciones",
+            title = "Rankings",
             subtitle = "Consulta los líderes de cada estadística.",
             modifier = Modifier.padding(20.dp)
         )

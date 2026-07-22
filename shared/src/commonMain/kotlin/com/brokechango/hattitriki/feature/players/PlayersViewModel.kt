@@ -7,8 +7,8 @@ import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
 import com.brokechango.hattitriki.core.data.PlayerAvatarUrlsResult
 import com.brokechango.hattitriki.core.data.PlayerProfileRepository
-import com.brokechango.hattitriki.core.data.goalsAgainstShareByGoalkeeperId
 import com.brokechango.hattitriki.core.data.playerStats
+import com.brokechango.hattitriki.core.data.playerRankingMetricsByPlayerId
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.core.model.PlayerStats
 import kotlinx.coroutines.Dispatchers
@@ -34,7 +34,7 @@ class PlayersViewModel(
         }
     }
 
-    /** Reloads when the user actually opens Clasificaciones. */
+    /** Reloads when the user actually opens Rankings. */
     fun refresh() {
         _uiState.value = _uiState.value.copy(
             isLoading = true,
@@ -115,31 +115,20 @@ private data class PreparedRankings(
  */
 private fun FootballSnapshot.prepareRankings(): PreparedRankings {
     val stats = playerStats()
-    val assignedGoalsAgainstByPlayerId = matches
-        .asSequence()
-        .flatMap { it.goals.asSequence() }
-        .groupingBy { it.goalkeeperId }
-        .fold(0) { total, goal -> total + goal.count }
-    val sharedGoalsAgainstByPlayerId = goalsAgainstShareByGoalkeeperId()
+    val rankingMetricsByPlayerId = playerRankingMetricsByPlayerId(stats)
     val recentFormByPlayerId = recentFormByPlayerId()
     val goalkeeperRankings = stats
         .filter { it.goalkeeperMatches > 0 }
-        .map { it to (sharedGoalsAgainstByPlayerId[it.player.id] ?: 0.0) }
+        .map { playerStats ->
+            playerStats to checkNotNull(rankingMetricsByPlayerId.getValue(playerStats.player.id).goalsAgainst)
+        }
 
     fun rankingEntry(stats: PlayerStats, value: String) = PlayerRankingEntry(
         stats = stats,
         value = value,
         recentForm = recentFormByPlayerId[stats.player.id].orEmpty(),
-        goalsAgainst = assignedGoalsAgainstByPlayerId[stats.player.id]
+        goalsAgainst = rankingMetricsByPlayerId.getValue(stats.player.id).goalsAgainst
     )
-
-    fun playerOnFormTotal(stats: PlayerStats): Int {
-        val goalkeeperAdjustment = assignedGoalsAgainstByPlayerId[stats.player.id]?.let { goalsAgainst ->
-            (stats.goalkeeperMatches * 2 - goalsAgainst).coerceAtLeast(0)
-        } ?: 0
-
-        return stats.matchesPlayed + stats.goals + stats.wins + goalkeeperAdjustment
-    }
 
     return PreparedRankings(
         rankingsByCategory = mapOf(
@@ -177,12 +166,17 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
                 .sortedWith(compareByDescending<PlayerStats> { it.wins }.thenByDescending { it.goals })
                 .map { rankingEntry(it, it.wins.toString()) },
             PlayerRankingCategory.PLAYER_ON_FORM to stats
-                .map { it to playerOnFormTotal(it) }
+                .map { playerStats ->
+                    playerStats to rankingMetricsByPlayerId.getValue(playerStats.player.id).totalPerformance
+                }
                 .sortedWith(
                     compareByDescending<Pair<PlayerStats, Int>> { it.second }
                         .thenByDescending { it.first.goals }
                         .thenByDescending { it.first.wins }
-                        .thenBy { assignedGoalsAgainstByPlayerId[it.first.player.id] ?: Int.MAX_VALUE }
+                        .thenBy {
+                            rankingMetricsByPlayerId.getValue(it.first.player.id).assignedGoalsAgainst
+                                ?: Int.MAX_VALUE
+                        }
                 )
                 .map { (stats, total) -> rankingEntry(stats, total.toString()) }
         )

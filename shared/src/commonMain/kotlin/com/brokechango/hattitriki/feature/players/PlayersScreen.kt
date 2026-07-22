@@ -39,6 +39,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.getPlatform
@@ -81,10 +82,10 @@ fun PlayersScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
         ScreenTitle(
-            title = "Clasificaciones"
+            title = "Rankings"
         )
         if (uiState.isLoading) {
-            SupabaseLoadingState(message = "Cargando las clasificaciones…")
+            SupabaseLoadingState(message = "Cargando los rankings…")
             return@Column
         }
         uiState.errorMessage?.let { message ->
@@ -329,7 +330,7 @@ private fun RankingTableHeader(
     category: PlayerRankingCategory,
     showInlineRecentForm: Boolean
 ) {
-    val isPlayerOnForm = category == PlayerRankingCategory.PLAYER_ON_FORM
+    val columns = rankingTableColumns(category)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,11 +341,9 @@ private fun RankingTableHeader(
         TableLabel("#", Modifier.width(30.dp), TextAlign.Center)
         Spacer(modifier = Modifier.width(42.dp))
         TableLabel("JUGADOR", Modifier.weight(1f), TextAlign.Start)
-        TableLabel("PJ", Modifier.width(30.dp), TextAlign.Center)
-        TableLabel(if (isPlayerOnForm) "G" else "V", Modifier.width(28.dp), TextAlign.Center)
-        TableLabel(if (isPlayerOnForm) "GC" else "E", Modifier.width(28.dp), TextAlign.Center)
-        TableLabel(if (isPlayerOnForm) "V" else "D", Modifier.width(28.dp), TextAlign.Center)
-        TableLabel(rankingMetricLabel(category), Modifier.width(54.dp), TextAlign.End)
+        columns.forEach { column ->
+            TableLabel(column.label, Modifier.width(column.width), column.textAlign)
+        }
         if (showInlineRecentForm) {
             TableLabel("RACHA", Modifier.width(168.dp), TextAlign.Start)
         }
@@ -363,7 +362,7 @@ private fun RankingRow(
 ) {
     val stats = ranking.stats
     val rank = index + 1
-    val isPlayerOnForm = category == PlayerRankingCategory.PLAYER_ON_FORM
+    val columns = rankingTableColumns(category)
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -391,32 +390,20 @@ private fun RankingRow(
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (rank <= 3) FontWeight.Black else FontWeight.Bold
             )
-            TableValue(stats.matchesPlayed.toString(), Modifier.width(30.dp))
-            if (isPlayerOnForm) {
-                TableValue(stats.goals.toString(), Modifier.width(28.dp), color = CrestGold)
-                TableValue(ranking.goalsAgainst?.toString() ?: "—", Modifier.width(28.dp))
-                TableValue(stats.wins.toString(), Modifier.width(28.dp), color = CrestGold)
-            } else {
-                TableValue(stats.wins.toString(), Modifier.width(28.dp), color = CrestGold)
-                TableValue(stats.draws.toString(), Modifier.width(28.dp))
-                TableValue(stats.losses.toString(), Modifier.width(28.dp))
+            columns.forEach { column ->
+                TableValue(
+                    text = column.value(ranking),
+                    modifier = Modifier.width(column.width),
+                    textAlign = column.textAlign,
+                    color = if (column.isPrimaryMetric) CrestGold else MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
-             if (showInlineRecentForm) {
+            if (showInlineRecentForm) {
                 RecentForm(
                     results = ranking.recentForm,
                     modifier = Modifier.width(168.dp).padding(end = 12.dp)
                 )
             }
-            Text(
-                text = ranking.value,
-                modifier = Modifier.width(54.dp),
-                textAlign = TextAlign.End,
-                maxLines = 1,
-                style = MaterialTheme.typography.labelLarge,
-                color = CrestGold,
-                fontWeight = FontWeight.Black
-            )
-
         }
         if (showRecentForm && !showInlineRecentForm) {
             Row(
@@ -559,27 +546,100 @@ private fun TableLabel(
 private fun TableValue(
     text: String,
     modifier: Modifier,
+    textAlign: TextAlign = TextAlign.Center,
     color: Color = MaterialTheme.colorScheme.onSurfaceVariant
 ) {
     Text(
         text = text,
         modifier = modifier,
-        textAlign = TextAlign.Center,
+        textAlign = textAlign,
         style = MaterialTheme.typography.labelMedium,
         color = color,
         fontWeight = FontWeight.Bold
     )
 }
 
-private fun rankingMetricLabel(category: PlayerRankingCategory): String = when (category) {
-    PlayerRankingCategory.TOP_SCORER -> "G"
-    PlayerRankingCategory.GOALS_PER_MATCH -> "G/P"
-    PlayerRankingCategory.ZAMORA -> "GC"
-    PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH -> "GC/P"
-    PlayerRankingCategory.MOST_PLAYED -> "PJ"
-    PlayerRankingCategory.MOST_WINS -> "V"
-    PlayerRankingCategory.PLAYER_ON_FORM -> "TOTAL"
+private data class RankingTableColumn(
+    val label: String,
+    val width: Dp,
+    val textAlign: TextAlign = TextAlign.Center,
+    val isPrimaryMetric: Boolean = false,
+    val value: (PlayerRankingEntry) -> String
+)
+
+private fun rankingTableColumns(category: PlayerRankingCategory): List<RankingTableColumn> {
+    fun support(label: String, width: Dp = 28.dp, value: (PlayerRankingEntry) -> String) =
+        RankingTableColumn(label = label, width = width, value = value)
+    fun metric(label: String, value: (PlayerRankingEntry) -> String) = RankingTableColumn(
+        label = label,
+        width = 54.dp,
+        textAlign = TextAlign.End,
+        isPrimaryMetric = true,
+        value = value
+    )
+
+    return when (category) {
+        PlayerRankingCategory.TOP_SCORER -> listOf(
+            support("PJ", 30.dp) { it.stats.matchesPlayed.toString() },
+            support("G/P", 36.dp) { it.goalsPerMatch() },
+            metric("G") { it.value }
+        )
+        PlayerRankingCategory.GOALS_PER_MATCH -> listOf(
+            support("PJ", 30.dp) { it.stats.matchesPlayed.toString() },
+            support("G") { it.stats.goals.toString() },
+            metric("G/P") { it.value }
+        )
+        PlayerRankingCategory.ZAMORA -> listOf(
+            support("PP", 30.dp) { it.stats.goalkeeperMatches.toString() },
+            support("GC/P", 36.dp) { it.goalsAgainstPerGoalkeeperMatch() },
+            metric("GC") { it.value }
+        )
+        PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH -> listOf(
+            support("PP", 30.dp) { it.stats.goalkeeperMatches.toString() },
+            support("GC") { it.formattedGoalsAgainst() },
+            metric("GC/P") { it.value }
+        )
+        PlayerRankingCategory.MOST_PLAYED -> listOf(
+            support("V") { it.stats.wins.toString() },
+            support("E") { it.stats.draws.toString() },
+            support("D") { it.stats.losses.toString() },
+            metric("PJ") { it.value }
+        )
+        PlayerRankingCategory.MOST_WINS -> listOf(
+            support("PJ", 30.dp) { it.stats.matchesPlayed.toString() },
+            support("E") { it.stats.draws.toString() },
+            support("D") { it.stats.losses.toString() },
+            metric("V") { it.value }
+        )
+        PlayerRankingCategory.PLAYER_ON_FORM -> listOf(
+            support("PJ", 30.dp) { it.stats.matchesPlayed.toString() },
+            support("G") { it.stats.goals.toString() },
+            support("GC") { it.formattedGoalsAgainst() },
+            support("V") { it.stats.wins.toString() },
+            metric("TOTAL") { it.value }
+        )
+    }
 }
+
+private fun PlayerRankingEntry.goalsPerMatch(): String =
+    formatRankingDecimal(stats.goals.toDouble() / stats.matchesPlayed.coerceAtLeast(1))
+
+private fun PlayerRankingEntry.goalsAgainstPerGoalkeeperMatch(): String = goalsAgainst?.let { goalsAgainst ->
+    formatRankingDecimal(goalsAgainst / stats.goalkeeperMatches.coerceAtLeast(1))
+} ?: "—"
+
+private fun PlayerRankingEntry.formattedGoalsAgainst(): String = goalsAgainst?.let(::formatRankingGoalTotal) ?: "—"
+
+private fun formatRankingDecimal(value: Double): String =
+    (kotlin.math.round(value * 10) / 10).toString()
+
+private fun formatRankingGoalTotal(value: Double): String {
+    val roundedValue = kotlin.math.round(value * 10) / 10
+    return if (roundedValue % 1.0 == 0.0) roundedValue.toInt().toString() else roundedValue.toString()
+}
+
+private fun rankingMetricLabel(category: PlayerRankingCategory): String =
+    rankingTableColumns(category).last().label
 
 private fun String.initials(): String =
     trim().split(Regex("\\s+")).filter(String::isNotBlank).take(2).joinToString("") { it.first().uppercase() }
@@ -611,7 +671,7 @@ private fun PlayersScreenPreview() {
                 modifier = Modifier.fillMaxSize().padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                ScreenTitle(title = "Clasificaciones")
+                ScreenTitle(title = "Rankings")
                 RankingSummary(category = category, playerCount = rankings.size)
                 if (useExpandedFilters) {
                     CategoryFilters(

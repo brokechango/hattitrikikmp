@@ -16,7 +16,7 @@
 
     <string name="navigation_home">Inicio</string>
     <string name="navigation_matches">Partidos</string>
-    <string name="navigation_rankings">Clasificaciones</string>
+    <string name="navigation_rankings">Rankings</string>
     <string name="navigation_profile">Perfil</string>
     <string name="navigation_manager">Míster</string>
     <string name="navigation_manager_area">Zona míster</string>
@@ -97,8 +97,8 @@
     <string name="history_no_matches">Todavía no hay partidos guardados.</string>
     <string name="history_final">FINAL</string>
 
-    <string name="rankings_title">Clasificaciones</string>
-    <string name="rankings_loading">Cargando las clasificaciones…</string>
+    <string name="rankings_title">Rankings</string>
+    <string name="rankings_loading">Cargando los rankings…</string>
     <string name="rankings_hide_filters">Ocultar filtros</string>
     <string name="rankings_show_filters">Mostrar filtros</string>
     <string name="rankings_season_summary">TEMPORADA · %1$s JUGADORES</string>

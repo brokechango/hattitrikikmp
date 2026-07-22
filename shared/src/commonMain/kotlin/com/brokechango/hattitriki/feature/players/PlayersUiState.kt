@@ -16,7 +16,7 @@ data class PlayerRankingEntry(
     val stats: PlayerStats,
     val value: String,
     val recentForm: List<PlayerMatchResult>,
-    val goalsAgainst: Int?
+    val goalsAgainst: Double?
 )
 
 enum class RankingView(val label: String) {

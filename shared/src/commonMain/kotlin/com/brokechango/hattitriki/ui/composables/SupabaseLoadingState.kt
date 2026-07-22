@@ -142,7 +142,7 @@ fun SupabaseLoadingState(
 private fun SupabaseLoadingStatePreview() {
     HattitrikiPreview {
         SupabaseLoadingState(
-            message = "Cargando las clasificaciones…",
+            message = "Cargando los rankings…",
             modifier = Modifier.fillMaxSize()
         )
     }
