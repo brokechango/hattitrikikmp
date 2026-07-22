@@ -143,23 +143,14 @@ Deno.serve(async (request) => {
     );
   }
 
-  // The Auth trigger consumes the token and links player_id before this point.
-  // Only activate the expected profile: never repair a missing/mismatched link
-  // with the service key.
-  const { data: linkedProfile, error: linkedProfileError } = await adminClient
-    .from("profiles")
-    .select("player_id")
-    .eq("id", invitationData.user.id)
-    .maybeSingle();
-  if (linkedProfileError || linkedProfile?.player_id !== playerId) {
-    console.error("Invitation sent but player link was not created", linkedProfileError);
-    return response(500, { code: "profile_link_failed", message: "Could not link player profile" });
-  }
-  const { error: profileActivationError } = await adminClient
-    .from("profiles")
-    .update({ role: "member", is_active: true })
-    .eq("id", invitationData.user.id)
-    .eq("player_id", playerId);
+  // Activate only the profile that the invitation trigger already linked. The
+  // RPC validates the caller's active admin role and the consumed invite,
+  // avoiding a browser-inherited header or broad server-side profile update.
+  const { error: profileActivationError } = await callerClient
+    .rpc("activate_invited_player_profile", {
+      p_user_id: invitationData.user.id,
+      p_player_id: playerId,
+    });
   if (profileActivationError) {
     console.error("Invitation sent but profile activation failed", profileActivationError);
     return response(500, { code: "profile_activation_failed", message: "Could not activate member" });
