@@ -14,21 +14,21 @@ type InvitationRequest = {
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function readDefaultApiKey(legacyVariable: string, currentVariable: string): string | null {
-  const legacyKey = Deno.env.get(legacyVariable)?.trim();
-  if (legacyKey) return legacyKey;
-
+function readDefaultApiKey(currentVariable: string, legacyVariable: string): string | null {
   const encodedKeys = Deno.env.get(currentVariable);
-  if (!encodedKeys) return null;
-
-  try {
-    const keys = JSON.parse(encodedKeys) as Record<string, unknown>;
-    const defaultKey = keys.default;
-    return typeof defaultKey === "string" && defaultKey.trim().length > 0 ? defaultKey.trim() : null;
-  } catch {
-    console.error(`Could not read ${currentVariable}.`);
-    return null;
+  if (encodedKeys) {
+    try {
+      const keys = JSON.parse(encodedKeys) as Record<string, unknown>;
+      const defaultKey = keys.default;
+      if (typeof defaultKey === "string" && defaultKey.trim().length > 0) {
+        return defaultKey.trim();
+      }
+    } catch {
+      console.error(`Could not read ${currentVariable}.`);
+    }
   }
+
+  return Deno.env.get(legacyVariable)?.trim() || null;
 }
 
 function response(status: number, body: Record<string, string>) {
@@ -56,8 +56,10 @@ Deno.serve(async (request) => {
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const supabaseAnonKey = readDefaultApiKey("SUPABASE_ANON_KEY", "SUPABASE_PUBLISHABLE_KEYS");
-  const serviceRoleKey = readDefaultApiKey("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEYS");
+  // Prefer the current key sets. Supabase keeps legacy variables for compatibility,
+  // but their credentials may be rotated independently.
+  const supabaseAnonKey = readDefaultApiKey("SUPABASE_PUBLISHABLE_KEYS", "SUPABASE_ANON_KEY");
+  const serviceRoleKey = readDefaultApiKey("SUPABASE_SECRET_KEYS", "SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     console.error("Supabase Edge Function environment is incomplete.");
     return response(500, { code: "configuration_error", message: "Server configuration is incomplete" });
@@ -75,16 +77,17 @@ Deno.serve(async (request) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-  const { data: callerProfile, error: callerProfileError } = await adminClient
-    .from("profiles")
-    .select("role, is_active")
-    .eq("id", userData.user.id)
-    .maybeSingle();
-  if (callerProfileError) {
-    console.error("Could not verify invitation sender", callerProfileError);
+  // This SECURITY DEFINER RPC is deliberately called with the requester's token.
+  // It validates their active admin role without coupling authorization to the
+  // server client's secret-key headers.
+  const { data: accessRows, error: accessError } = await callerClient
+    .rpc("get_current_user_access");
+  if (accessError) {
+    console.error("Could not verify invitation sender", accessError);
     return response(500, { code: "authorization_check_failed", message: "Could not verify permissions" });
   }
-  if (callerProfile?.role !== "admin" || !callerProfile.is_active) {
+  const callerAccess = Array.isArray(accessRows) ? accessRows[0] : accessRows;
+  if (callerAccess?.role !== "admin" || callerAccess.is_member !== true) {
     return response(403, { code: "forbidden", message: "Administrator permission required" });
   }
 
