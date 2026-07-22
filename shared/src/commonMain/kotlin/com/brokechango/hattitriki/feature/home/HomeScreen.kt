@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,7 +99,12 @@ fun HomeScreen(
             return@Column
         }
         uiState.errorMessage?.let { message ->
-            Text(message, color = MaterialTheme.colorScheme.error)
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(message, color = MaterialTheme.colorScheme.error)
+                Button(onClick = viewModel::refresh) {
+                    Text(stringResource(Res.string.action_retry))
+                }
+            }
             return@Column
         }
 

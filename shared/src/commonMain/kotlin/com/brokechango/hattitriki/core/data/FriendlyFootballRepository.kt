@@ -15,6 +15,9 @@ import com.brokechango.hattitriki.core.supabase.toSupabaseUserMessage
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -41,28 +44,39 @@ class SupabaseFriendlyFootballRepository(
     private val client: SupabaseClient
 ) : FriendlyFootballRepository {
     override suspend fun loadSnapshot(): FootballSnapshotResult = try {
-        logSupabaseRequest("Cargar datos de la liga")
-        val players = client.postgrest
-            .rpc("get_public_league_players")
-            .decodeList<StoredPublicPlayer>()
-            .map { Player(id = it.id, name = it.name, isActive = it.isActive) }
-        val matches = client.postgrest
-            .rpc("get_public_friendly_matches")
-            .decodeList<StoredPublicMatch>()
-            .map(StoredPublicMatch::toFriendlyMatch)
+        withTimeout(leagueLoadTimeoutMillis) {
+            logSupabaseRequest("Cargar datos de la liga")
+            val players = client.postgrest
+                .rpc("get_public_league_players")
+                .decodeList<StoredPublicPlayer>()
+                .map { Player(id = it.id, name = it.name, isActive = it.isActive) }
+            val matches = client.postgrest
+                .rpc("get_public_friendly_matches")
+                .decodeList<StoredPublicMatch>()
+                .map(StoredPublicMatch::toFriendlyMatch)
 
-        logSupabaseSuccess("Cargar datos de la liga")
-        FootballSnapshotResult.Success(
-            FootballSnapshot(
-                players = players,
-                matches = matches
+            logSupabaseSuccess("Cargar datos de la liga")
+            FootballSnapshotResult.Success(
+                FootballSnapshot(
+                    players = players,
+                    matches = matches
+                )
             )
+        }
+    } catch (exception: TimeoutCancellationException) {
+        logSupabaseFailure("Cargar datos de la liga", exception)
+        FootballSnapshotResult.Failure(
+            "La carga de la liga está tardando demasiado. Comprueba tu conexión e inténtalo de nuevo."
         )
+    } catch (exception: CancellationException) {
+        throw exception
     } catch (exception: Exception) {
         logSupabaseFailure("Cargar datos de la liga", exception)
         FootballSnapshotResult.Failure(publicLeagueLoadErrorMessage(exception))
     }
 }
+
+private const val leagueLoadTimeoutMillis = 20_000L
 
 @Serializable
 private data class StoredPublicPlayer(
