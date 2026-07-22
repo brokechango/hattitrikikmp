@@ -6,6 +6,7 @@ import com.brokechango.hattitriki.App
 import com.brokechango.hattitriki.core.auth.AuthRepository
 import com.brokechango.hattitriki.core.auth.SupabaseCredentials
 import com.brokechango.hattitriki.core.auth.createAuthRepository
+import com.brokechango.hattitriki.core.navigation.BrowserHistoryNavigationEffect
 import com.russhwolf.settings.StorageSettings
 import io.github.jan.supabase.auth.SettingsSessionManager
 import kotlin.js.ExperimentalWasmJsInterop
@@ -46,7 +47,8 @@ private fun mountComposeApp() {
             appVersion = "Web",
             initialAuthEmail = initialEmail,
             initialAuthPassword = initialPassword,
-            submitInitialAuth = submitInitialLogin
+            submitInitialAuth = submitInitialLogin,
+            browserNavigationEffect = ::BrowserHistoryNavigationEffect
         )
     }
 }

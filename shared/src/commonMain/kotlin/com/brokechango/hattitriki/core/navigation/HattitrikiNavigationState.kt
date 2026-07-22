@@ -42,6 +42,8 @@ class HattitrikiNavigationState internal constructor(
     private val selectedTab: MutableState<String>,
     private val tabBackStacks: Map<HattitrikiTab, MutableList<NavKey>>
 ) {
+    private var historyDelegate: HattitrikiNavigationHistoryDelegate? = null
+
     val backStack: List<NavKey>
         get() = activeBackStack
 
@@ -58,6 +60,7 @@ class HattitrikiNavigationState internal constructor(
         val tab = HattitrikiTab.from(screen)
         tabBackStacks.getValue(tab).retainRoot()
         selectedTab.value = tab.name
+        notifyHistoryDelegate()
     }
 
     fun navigate(screen: Screens) {
@@ -67,14 +70,18 @@ class HattitrikiNavigationState internal constructor(
         } else {
             activeBackStack.add(screen)
         }
+        notifyHistoryDelegate()
     }
 
     fun navigateBack() {
+        if (historyDelegate?.onBackRequested() == true) return
+
         if (activeBackStack.size > 1) {
             activeBackStack.removeAt(activeBackStack.lastIndex)
         } else if (activeTab != HattitrikiTab.Home) {
             selectedTab.value = HattitrikiTab.Home.name
         }
+        notifyHistoryDelegate()
     }
 
     fun backStackFor(topLevelScreen: Screens): List<NavKey> {
@@ -96,11 +103,46 @@ class HattitrikiNavigationState internal constructor(
     private val activeBackStack: MutableList<NavKey>
         get() = checkNotNull(tabBackStacks[activeTab])
 
+    internal fun snapshot(): HattitrikiNavigationSnapshot = HattitrikiNavigationSnapshot(
+        selectedTab = activeTab,
+        tabBackStacks = tabBackStacks.mapValues { (_, backStack) ->
+            backStack.map { it as Screens }
+        }
+    )
+
+    internal fun restore(snapshot: HattitrikiNavigationSnapshot) {
+        tabBackStacks.forEach { (tab, backStack) ->
+            backStack.clear()
+            backStack.addAll(snapshot.tabBackStacks.getValue(tab))
+        }
+        selectedTab.value = snapshot.selectedTab.name
+    }
+
+    internal fun setHistoryDelegate(delegate: HattitrikiNavigationHistoryDelegate?) {
+        historyDelegate = delegate
+    }
+
+    private fun notifyHistoryDelegate() {
+        historyDelegate?.onNavigationChanged(snapshot())
+    }
+
     private fun MutableList<NavKey>.retainRoot() {
         while (size > 1) {
             removeAt(lastIndex)
         }
     }
+}
+
+internal data class HattitrikiNavigationSnapshot(
+    val selectedTab: HattitrikiTab,
+    val tabBackStacks: Map<HattitrikiTab, List<Screens>>
+)
+
+internal interface HattitrikiNavigationHistoryDelegate {
+    /** Returns true when the platform will deliver the back navigation itself. */
+    fun onBackRequested(): Boolean
+
+    fun onNavigationChanged(snapshot: HattitrikiNavigationSnapshot)
 }
 
 internal enum class HattitrikiTab(val screen: Screens) {
