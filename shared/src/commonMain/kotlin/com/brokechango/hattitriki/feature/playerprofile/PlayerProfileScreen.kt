@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -234,6 +235,24 @@ private fun PlayerAvatar(
                 fontWeight = FontWeight.Black
             )
         }
+        if (onClick != null) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(4.dp),
+                shape = RoundedCornerShape(8.dp),
+                color = CrestGold,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shadowElevation = 2.dp
+            ) {
+                Text(
+                    text = "VER",
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
     }
 }
 
@@ -301,7 +320,8 @@ private fun AvatarPreviewDialog(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 280.dp)
+                    .heightIn(max = 360.dp)
+                    .aspectRatio(1f)
                     .clip(RoundedCornerShape(16.dp))
                     .background(CrestNavyLight),
                 contentAlignment = Alignment.Center
