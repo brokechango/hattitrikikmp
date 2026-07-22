@@ -2,7 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -34,6 +34,7 @@ Deno.serve(async (request) => {
 
   const authorization = request.headers.get("Authorization")?.trim();
   if (!authorization) {
+    console.warn("Invitation request rejected: authorization header missing.");
     return response(401, { code: "unauthorized", message: "Missing authorization" });
   }
 
@@ -50,6 +51,7 @@ Deno.serve(async (request) => {
   });
   const { data: userData, error: userError } = await callerClient.auth.getUser();
   if (userError || !userData.user) {
+    console.warn("Invitation request rejected: session is invalid.");
     return response(401, { code: "unauthorized", message: "Invalid session" });
   }
 

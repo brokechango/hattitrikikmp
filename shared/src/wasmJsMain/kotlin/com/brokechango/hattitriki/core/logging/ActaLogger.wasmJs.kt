@@ -9,5 +9,5 @@ internal actual fun logSupabaseSuccess(operation: String) {
 }
 
 internal actual fun logSupabaseFailure(operation: String, error: Throwable) {
-    println("HattitrikiSupabase: $operation → error")
+    println("HattitrikiSupabase: $operation → error: ${safeSupabaseErrorDetail(error)}")
 }

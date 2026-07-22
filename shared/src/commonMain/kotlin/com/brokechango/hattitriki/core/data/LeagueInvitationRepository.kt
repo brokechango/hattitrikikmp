@@ -10,6 +10,9 @@ import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.functions.functions
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.rpc
+import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -64,7 +67,10 @@ class LeagueInvitationRepository internal constructor(
             logSupabaseRequest("Enviar invitación a la liga")
             client.functions(
                 function = "send-league-invitation",
-                body = SendLeagueInvitationPayload(playerId, normalizedEmail)
+                body = SendLeagueInvitationPayload(playerId, normalizedEmail),
+                headers = Headers.build {
+                    append(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+                }
             )
             logSupabaseSuccess("Enviar invitación a la liga")
             SendLeagueInvitationResult.Success(normalizedEmail)
