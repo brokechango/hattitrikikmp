@@ -2,9 +2,11 @@ package com.brokechango.hattitriki.feature.playerprofile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +22,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,14 +38,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.window.Dialog
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestNavyLight
 import com.brokechango.hattitriki.core.data.AvatarUpload
 import com.brokechango.hattitriki.core.model.PlayerConnection
 import com.brokechango.hattitriki.core.model.PlayerProfileSummary
+import com.brokechango.hattitriki.core.model.Player
+import com.brokechango.hattitriki.core.model.PlayerStats
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
 import com.github.panpf.sketch.AsyncImage
 
 @Composable
@@ -95,6 +107,8 @@ private fun PlayerProfileContent(
     onPlayerSelected: (String) -> Unit
 ) {
     val player = summary.stats.player
+    var avatarDialog by rememberSaveable { mutableStateOf<AvatarDialog?>(null) }
+
     ScreenTitle(
         title = player.name,
         subtitle = if (isCurrentPlayer) "Tu perfil de jugador" else "Perfil de jugador"
@@ -105,7 +119,12 @@ private fun PlayerProfileContent(
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            PlayerAvatar(name = player.name, avatarUrl = avatarUrl, size = 92.dp)
+            PlayerAvatar(
+                name = player.name,
+                avatarUrl = avatarUrl,
+                size = 92.dp,
+                onClick = { avatarDialog = AvatarDialog.ACTIONS }
+            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(5.dp)
@@ -132,15 +151,7 @@ private fun PlayerProfileContent(
             }
         }
     }
-    if (isCurrentPlayer) {
-        AvatarChangeControl(
-            isUploading = isUploadingAvatar,
-            successMessage = avatarFeedbackMessage,
-            errorMessage = avatarErrorMessage,
-            onAvatarSelected = onAvatarSelected,
-            onPickerFailure = onAvatarPickerFailure
-        )
-    } else if (!hasLinkedAccount) {
+    if (!hasLinkedAccount) {
         ProfileHint("Este jugador todavía no tiene una cuenta vinculada.")
     }
     avatarWarning?.let { warning ->
@@ -167,15 +178,45 @@ private fun PlayerProfileContent(
         color = Color(0xFF45B978),
         onPlayerSelected = onPlayerSelected
     )
+
+    when (avatarDialog) {
+        AvatarDialog.ACTIONS -> AvatarActionsDialog(
+            name = player.name,
+            canEdit = isCurrentPlayer,
+            onViewPhoto = { avatarDialog = AvatarDialog.PREVIEW },
+            onEditPhoto = { avatarDialog = AvatarDialog.EDIT },
+            onDismiss = { avatarDialog = null }
+        )
+        AvatarDialog.PREVIEW -> AvatarPreviewDialog(
+            name = player.name,
+            avatarUrl = avatarUrl,
+            onDismiss = { avatarDialog = null }
+        )
+        AvatarDialog.EDIT -> AvatarEditDialog(
+            isUploading = isUploadingAvatar,
+            successMessage = avatarFeedbackMessage,
+            errorMessage = avatarErrorMessage,
+            onAvatarSelected = onAvatarSelected,
+            onPickerFailure = onAvatarPickerFailure,
+            onDismiss = { avatarDialog = null }
+        )
+        null -> Unit
+    }
 }
 
 @Composable
-private fun PlayerAvatar(name: String, avatarUrl: String?, size: androidx.compose.ui.unit.Dp = 84.dp) {
+private fun PlayerAvatar(
+    name: String,
+    avatarUrl: String?,
+    size: androidx.compose.ui.unit.Dp = 84.dp,
+    onClick: (() -> Unit)? = null
+) {
     Box(
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
-            .background(CrestNavyLight),
+            .background(CrestNavyLight)
+            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         contentAlignment = Alignment.Center
     ) {
         if (avatarUrl != null) {
@@ -196,8 +237,181 @@ private fun PlayerAvatar(name: String, avatarUrl: String?, size: androidx.compos
     }
 }
 
+private enum class AvatarDialog {
+    ACTIONS,
+    PREVIEW,
+    EDIT
+}
+
 @Composable
-private fun AvatarChangeControl(
+private fun AvatarActionsDialog(
+    name: String,
+    canEdit: Boolean,
+    onViewPhoto: () -> Unit,
+    onEditPhoto: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        AvatarDialogSurface {
+            Text(
+                text = "FOTO DE PERFIL",
+                style = MaterialTheme.typography.labelLarge,
+                color = CrestGold,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = name,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "Elige qué quieres hacer con la foto.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(onClick = onViewPhoto, modifier = Modifier.fillMaxWidth()) {
+                Text("Ver foto")
+            }
+            if (canEdit) {
+                OutlinedButton(onClick = onEditPhoto, modifier = Modifier.fillMaxWidth()) {
+                    Text("Editar foto")
+                }
+            }
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("Cerrar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvatarPreviewDialog(
+    name: String,
+    avatarUrl: String?,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        AvatarDialogSurface {
+            Text(
+                text = "FOTO DE PERFIL",
+                style = MaterialTheme.typography.labelLarge,
+                color = CrestGold,
+                fontWeight = FontWeight.Black
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 280.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(CrestNavyLight),
+                contentAlignment = Alignment.Center
+            ) {
+                if (avatarUrl != null) {
+                    AsyncImage(
+                        uri = avatarUrl,
+                        contentDescription = "Foto de perfil ampliada de $name",
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                } else {
+                    PlayerAvatar(name = name, avatarUrl = null, size = 152.dp)
+                }
+            }
+            Text(
+                text = if (avatarUrl == null) "Todavía no hay una foto subida." else name,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("Cerrar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvatarEditDialog(
+    isUploading: Boolean,
+    successMessage: String?,
+    errorMessage: String?,
+    onAvatarSelected: (AvatarUpload) -> Unit,
+    onPickerFailure: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val picker = rememberAvatarPicker(onAvatarSelected, onPickerFailure)
+
+    Dialog(onDismissRequest = onDismiss) {
+        AvatarDialogSurface {
+            Text(
+                text = "EDITAR FOTO",
+                style = MaterialTheme.typography.labelLarge,
+                color = CrestGold,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "Actualiza tu foto de perfil",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black
+            )
+            Text(
+                text = "La foto se recortará en formato cuadrado y sólo será visible para la liga.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Button(
+                onClick = picker::choosePhoto,
+                enabled = !isUploading && !picker.isPreparing,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    when {
+                        isUploading -> "Guardando foto…"
+                        picker.isPreparing -> "Preparando foto…"
+                        else -> "Elegir otra foto"
+                    }
+                )
+            }
+            Text(
+                text = "JPEG o WebP · máximo 2,5 MB",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            successMessage?.let { message ->
+                Text(message, color = Color(0xFF45B978), fontWeight = FontWeight.SemiBold)
+            }
+            errorMessage?.let { message ->
+                Text(message, color = MaterialTheme.colorScheme.error)
+            }
+            OutlinedButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
+                Text("Cerrar")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AvatarDialogSurface(content: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, CrestGold.copy(alpha = 0.72f)),
+        shadowElevation = 18.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 340.dp)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            content = content
+        )
+    }
+}
+
+@Composable
+internal fun AvatarUploadControl(
     isUploading: Boolean,
     successMessage: String?,
     errorMessage: String?,
@@ -236,7 +450,7 @@ private fun AvatarChangeControl(
                 )
             }
             Text(
-                text = "JPEG o WebP · máximo 300 KB · visible sólo para la liga",
+                text = "JPEG o WebP · máximo 2,5 MB · visible sólo para la liga",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -374,3 +588,58 @@ private fun ConnectionCard(
 private fun String.initials(): String =
     trim().split(Regex("\\s+")).filter(String::isNotBlank).take(2).joinToString("") { it.first().uppercase() }
         .ifBlank { "?" }
+
+@PreviewTargets
+@Composable
+private fun AvatarUploadControlPreview() {
+    HattitrikiPreview {
+        Column(modifier = Modifier.fillMaxWidth().padding(20.dp)) {
+            AvatarUploadControl(
+                isUploading = false,
+                successMessage = "Foto actualizada correctamente.",
+                errorMessage = null,
+                onAvatarSelected = {},
+                onPickerFailure = {}
+            )
+        }
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun PlayerProfileScreenPreview() {
+    val player = Player("1", "Arturo García")
+    val summary = PlayerProfileSummary(
+        stats = PlayerStats(
+            player = player,
+            matchesPlayed = 12,
+            wins = 8,
+            draws = 2,
+            losses = 2,
+            goals = 15,
+            goalkeeperMatches = 1
+        ),
+        maximumRival = PlayerConnection(Player("2", "Marta"), matches = 8, isTied = false),
+        inseparableTeammate = PlayerConnection(Player("3", "Nico"), matches = 9, isTied = false)
+    )
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            PlayerProfileContent(
+                summary = summary,
+                avatarUrl = null,
+                isCurrentPlayer = true,
+                hasLinkedAccount = true,
+                avatarWarning = null,
+                isUploadingAvatar = false,
+                avatarFeedbackMessage = null,
+                avatarErrorMessage = null,
+                onAvatarSelected = {},
+                onAvatarPickerFailure = {},
+                onPlayerSelected = {}
+            )
+        }
+    }
+}

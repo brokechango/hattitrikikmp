@@ -11,11 +11,12 @@ class HattitrikiNavigationStateTest {
     @Test
     fun `back from players returns to home instead of leaving the app`() {
         val navigation = navigationState()
+        val players = Screens.Players(openTime = 42L)
 
-        navigation.navigate(Screens.Players)
+        navigation.navigate(players)
 
         assertTrue(navigation.canNavigateBack)
-        assertEquals(listOf(Screens.Home, Screens.Players), navigation.backStackFor(Screens.Players))
+        assertEquals(listOf(Screens.Home, players), navigation.backStackFor(players))
 
         navigation.navigateBack()
 
@@ -47,7 +48,7 @@ class HattitrikiNavigationStateTest {
 
         navigation.selectTopLevel(Screens.History)
         navigation.navigate(Screens.MatchDetail("match-42"))
-        navigation.selectTopLevel(Screens.Players)
+        navigation.selectTopLevel(Screens.Players(openTime = 42L))
 
         navigation.selectTopLevel(Screens.History)
 
@@ -74,13 +75,45 @@ class HattitrikiNavigationStateTest {
         )
     }
 
+    @Test
+    fun `reopening players replaces its root with the latest open time`() {
+        val navigation = navigationState()
+        val firstOpen = Screens.Players(openTime = 42L)
+        val secondOpen = Screens.Players(openTime = 84L)
+
+        navigation.selectTopLevel(firstOpen)
+        navigation.navigate(Screens.PlayerProfile("player-42"))
+        navigation.selectTopLevel(secondOpen)
+
+        assertEquals(secondOpen, navigation.currentScreen)
+        assertEquals(
+            listOf(Screens.Home, secondOpen),
+            navigation.backStackFor(secondOpen)
+        )
+    }
+
+    @Test
+    fun `profile is a top-level tab that returns to home`() {
+        val navigation = navigationState()
+
+        navigation.navigate(Screens.Settings)
+
+        assertEquals(Screens.Settings, navigation.currentScreen)
+        assertEquals(listOf(Screens.Home, Screens.Settings), navigation.backStackFor(Screens.Settings))
+
+        navigation.navigateBack()
+
+        assertEquals(Screens.Home, navigation.currentScreen)
+    }
+
     private fun navigationState(): HattitrikiNavigationState = HattitrikiNavigationState(
         selectedTab = mutableStateOf(HattitrikiTab.Home.name),
         tabBackStacks = mapOf(
             HattitrikiTab.Home to mutableListOf<NavKey>(Screens.Home),
             HattitrikiTab.History to mutableListOf<NavKey>(Screens.History),
-            HattitrikiTab.Players to mutableListOf<NavKey>(Screens.Players),
-            HattitrikiTab.Admin to mutableListOf<NavKey>(Screens.Admin)
+            HattitrikiTab.Players to mutableListOf<NavKey>(Screens.Players(openTime = 0L)),
+            HattitrikiTab.Admin to mutableListOf<NavKey>(Screens.Admin),
+            HattitrikiTab.Profile to mutableListOf<NavKey>(Screens.Settings)
         )
     )
 }

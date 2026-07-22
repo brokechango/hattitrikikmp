@@ -17,7 +17,7 @@ sealed interface Screens : NavKey {
     data object History : Screens
 
     @Serializable
-    data object Players : Screens
+    data class Players(val openTime: Long) : Screens
 
     @Serializable
     data object Admin : Screens
@@ -54,6 +54,9 @@ sealed interface Screens : NavKey {
 
     @Serializable
     data class PlayerProfile(val playerId: String) : Screens
+
+    @Serializable
+    data object Settings : Screens
 }
 
 val screensSavedStateConfiguration = SavedStateConfiguration {
@@ -77,6 +80,7 @@ val screensSavedStateConfiguration = SavedStateConfiguration {
             subclass(Screens.EditPlayer::class, Screens.EditPlayer.serializer())
             subclass(Screens.MatchDetail::class, Screens.MatchDetail.serializer())
             subclass(Screens.PlayerProfile::class, Screens.PlayerProfile.serializer())
+            subclass(Screens.Settings::class, Screens.Settings.serializer())
         }
     }
 }

@@ -26,6 +26,8 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -71,6 +73,8 @@ import com.brokechango.hattitriki.core.data.SupabasePlayerProfileRepository
 import com.brokechango.hattitriki.core.data.SupabaseFriendlyFootballRepository
 import com.brokechango.hattitriki.core.design.HattitrikiTheme
 import com.brokechango.hattitriki.ui.composables.PitchBackground
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
+import com.brokechango.hattitriki.core.navigation.HattitrikiTab
 import com.brokechango.hattitriki.core.navigation.Screens
 import com.brokechango.hattitriki.core.navigation.HattitrikiNavigationState
 import com.brokechango.hattitriki.core.navigation.rememberHattitrikiNavigationState
@@ -107,6 +111,8 @@ import com.brokechango.hattitriki.feature.players.PlayersEvent
 import com.brokechango.hattitriki.feature.players.PlayersViewModel
 import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileScreen
 import com.brokechango.hattitriki.feature.playerprofile.PlayerProfileViewModel
+import com.brokechango.hattitriki.feature.settings.SettingsScreen
+import com.brokechango.hattitriki.feature.settings.SettingsViewModel
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import hattitriki.shared.generated.resources.hattitriki_app_icon
@@ -122,6 +128,7 @@ import org.jetbrains.compose.resources.vectorResource
 
 @Composable
 @Preview
+@PreviewTargets
 @OptIn(ExperimentalMaterial3Api::class)
 fun App(
     authRepository: AuthRepository? = null,
@@ -176,11 +183,21 @@ fun App(
         val matchTeamsDraftStore = remember {
             MultiplatformSettingsMatchTeamsDraftStore(settings)
         }
-        val homeViewModel = remember(footballRepository, homeStatsOrderStore) {
-            HomeViewModel(footballRepository, homeStatsOrderStore)
+        val homeViewModel = remember(
+            footballRepository,
+            homeStatsOrderStore,
+            playerProfileRepository
+        ) {
+            HomeViewModel(
+                repository = footballRepository,
+                statsOrderStore = homeStatsOrderStore,
+                profileRepository = playerProfileRepository
+            )
         }
         val historyViewModel = remember(footballRepository) { HistoryViewModel(footballRepository) }
-        val playersViewModel = remember(footballRepository) { PlayersViewModel(footballRepository) }
+        val playersViewModel = remember(footballRepository, playerProfileRepository) {
+            PlayersViewModel(footballRepository, playerProfileRepository)
+        }
         val currentTeamRandomizerOpenTime = when (currentScreen) {
             is Screens.TeamRandomizer -> currentScreen.openTime
             is Screens.TeamRandomizerResult -> currentScreen.openTime
@@ -220,7 +237,7 @@ fun App(
                 Screens.Home -> homeScrollState.scrollTo(0)
                 Screens.History -> historyScrollState.scrollTo(0)
                 Screens.Admin -> adminScrollState.scrollTo(0)
-                Screens.Players -> Unit
+                is Screens.Players -> Unit
                 else -> error("Only top-level screens can be selected as tabs")
             }
         }
@@ -244,6 +261,7 @@ fun App(
                         isAdmin = isAdmin,
                         onBack = navigation::navigateBack,
                         onNavigate = navigation::selectTopLevel,
+                        onOpenSettings = { navigation.navigate(Screens.Settings) },
                         onLogout = { authViewModel.onEvent(AuthEvent.Logout) }
                     )
                 } else {
@@ -251,6 +269,7 @@ fun App(
                         currentScreen = currentScreen,
                         canNavigateBack = canNavigateWithinTab,
                         onBack = navigation::navigateBack,
+                        onOpenSettings = { navigation.navigate(Screens.Settings) },
                         onLogout = { authViewModel.onEvent(AuthEvent.Logout) }
                     )
                 }
@@ -308,7 +327,7 @@ fun App(
                                 val scrollState = when (topLevelScreen) {
                                     Screens.Home, Screens.History -> null
                                     Screens.Admin -> adminScrollState
-                                    Screens.Players -> null
+                                    is Screens.Players -> null
                                     else -> error("Only top-level screens can be animated as tabs")
                                 }
 
@@ -335,7 +354,7 @@ fun App(
                                                 HomeEvent.OpenHistory -> navigation.navigate(Screens.History)
                                                 is HomeEvent.OpenPlayers -> {
                                                     playersViewModel.selectCategory(event.category)
-                                                    navigation.navigate(Screens.Players)
+                                                    navigation.selectTopLevel(HattitrikiTab.Players)
                                                 }
                                                 is HomeEvent.OpenMatch -> navigation.navigate(
                                                     Screens.MatchDetail(event.matchId)
@@ -359,9 +378,10 @@ fun App(
                                     )
                                 }
 
-                                entry<Screens.Players> {
+                                entry<Screens.Players> { screen ->
                                     PlayersScreen(
                                         viewModel = playersViewModel,
+                                        openTime = screen.openTime,
                                         modifier = Modifier.fillMaxSize(),
                                         onEvent = { event ->
                                             when (event) {
@@ -500,6 +520,22 @@ fun App(
                                     )
                                 }
 
+                                entry<Screens.Settings> {
+                                    val settingsViewModel = remember(
+                                        footballRepository,
+                                        playerProfileRepository
+                                    ) {
+                                        SettingsViewModel(
+                                            footballRepository = footballRepository,
+                                            profileRepository = playerProfileRepository
+                                        )
+                                    }
+                                    SettingsScreen(
+                                        viewModel = settingsViewModel,
+                                        accountEmail = access.email
+                                    )
+                                }
+
                                 entry<Screens.TeamRandomizer> { screen ->
                                     TeamRandomizerScreen(
                                         viewModel = checkNotNull(teamRandomizerViewModel),
@@ -611,7 +647,7 @@ fun App(
 private fun topLevelScreenIndex(screen: Screens): Int = when (screen) {
     Screens.Home -> 0
     Screens.History -> 1
-    Screens.Players -> 2
+    is Screens.Players -> 2
     Screens.Admin -> 3
     else -> error("Only bottom-navigation screens can be animated as tabs: $screen")
 }
@@ -622,6 +658,7 @@ private fun MatchTopBar(
     currentScreen: Screens,
     canNavigateBack: Boolean,
     onBack: () -> Unit,
+    onOpenSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     TopAppBar(
@@ -662,12 +699,7 @@ private fun MatchTopBar(
             }
         },
         actions = {
-            TextButton(
-                onClick = onLogout,
-                colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
-            ) {
-                Text(stringResource(Res.string.action_sign_out), fontWeight = FontWeight.Bold)
-            }
+            AccountMenu(onOpenSettings = onOpenSettings, onLogout = onLogout)
         },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = CrestNavy,
@@ -681,10 +713,11 @@ private fun MatchTopBar(
 @Composable
 private fun topBarTitle(screen: Screens): String = when (screen) {
     is Screens.PlayerProfile -> "Perfil de jugador"
+    Screens.Settings -> "Ajustes"
     else -> stringResource(when (screen) {
         Screens.Home -> Res.string.app_title
         Screens.History -> Res.string.top_bar_history
-        Screens.Players -> Res.string.navigation_rankings
+        is Screens.Players -> Res.string.navigation_rankings
         Screens.Admin -> Res.string.navigation_manager_area
         is Screens.NewMatch -> Res.string.top_bar_new_match
         Screens.NewPlayer -> Res.string.top_bar_new_player
@@ -697,14 +730,48 @@ private fun topBarTitle(screen: Screens): String = when (screen) {
         is Screens.EditPlayer -> Res.string.top_bar_edit_player
         is Screens.MatchDetail -> Res.string.top_bar_match_record
         is Screens.PlayerProfile -> error("Handled before resource lookup")
+        Screens.Settings -> error("Handled before resource lookup")
     })
+}
+
+@Composable
+private fun AccountMenu(onOpenSettings: () -> Unit, onLogout: () -> Unit) {
+    val expanded = remember { mutableStateOf(false) }
+
+    Box {
+        TextButton(
+            onClick = { expanded.value = true },
+            colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
+        ) {
+            Text("MENÚ", fontWeight = FontWeight.Bold)
+        }
+        DropdownMenu(
+            expanded = expanded.value,
+            onDismissRequest = { expanded.value = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Ajustes") },
+                onClick = {
+                    expanded.value = false
+                    onOpenSettings()
+                }
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(Res.string.action_sign_out)) },
+                onClick = {
+                    expanded.value = false
+                    onLogout()
+                }
+            )
+        }
+    }
 }
 
 @Composable
 private fun MainNavigationBar(
     currentScreen: Screens,
     isAdmin: Boolean,
-    onNavigate: (Screens) -> Unit
+    onNavigate: (HattitrikiTab) -> Unit
 ) {
     NavigationBar(
         containerColor = CrestNavy,
@@ -713,7 +780,7 @@ private fun MainNavigationBar(
     ) {
         NavigationBarItem(
             selected = currentScreen == Screens.Home,
-            onClick = { onNavigate(Screens.Home) },
+            onClick = { onNavigate(HattitrikiTab.Home) },
             label = { Text(stringResource(Res.string.navigation_home)) },
             icon = {
                 NavigationIcon(
@@ -725,7 +792,7 @@ private fun MainNavigationBar(
         )
         NavigationBarItem(
             selected = currentScreen == Screens.History,
-            onClick = { onNavigate(Screens.History) },
+            onClick = { onNavigate(HattitrikiTab.History) },
             label = { Text(stringResource(Res.string.navigation_matches)) },
             icon = {
                 NavigationIcon(
@@ -736,8 +803,8 @@ private fun MainNavigationBar(
             colors = navItemColors()
         )
         NavigationBarItem(
-            selected = currentScreen == Screens.Players,
-            onClick = { onNavigate(Screens.Players) },
+            selected = currentScreen is Screens.Players,
+            onClick = { onNavigate(HattitrikiTab.Players) },
             label = { Text(stringResource(Res.string.navigation_rankings)) },
             icon = {
                 NavigationIcon(
@@ -750,7 +817,7 @@ private fun MainNavigationBar(
         if (isAdmin) {
             NavigationBarItem(
                 selected = currentScreen == Screens.Admin,
-                onClick = { onNavigate(Screens.Admin) },
+                onClick = { onNavigate(HattitrikiTab.Admin) },
                 label = { Text(stringResource(Res.string.navigation_manager)) },
                 icon = {
                     NavigationIcon(
@@ -761,6 +828,18 @@ private fun MainNavigationBar(
                 colors = navItemColors()
             )
         }
+        NavigationBarItem(
+            selected = currentScreen == Screens.Settings,
+            onClick = { onNavigate(HattitrikiTab.Profile) },
+            label = { Text(stringResource(Res.string.navigation_profile)) },
+            icon = {
+                NavigationIcon(
+                    resource = Res.drawable.icon_profile,
+                    contentDescription = stringResource(Res.string.navigation_profile)
+                )
+            },
+            colors = navItemColors()
+        )
     }
 }
 
@@ -774,17 +853,20 @@ private fun NavigationIcon(resource: DrawableResource, contentDescription: Strin
 }
 
 private data class DesktopDestination(
-    val screen: Screens,
+    val tab: HattitrikiTab,
     val label: StringResource
 )
 
 private val desktopDestinations = listOf(
-    DesktopDestination(Screens.Home, Res.string.navigation_home),
-    DesktopDestination(Screens.History, Res.string.navigation_matches),
-    DesktopDestination(Screens.Players, Res.string.navigation_rankings)
+    DesktopDestination(HattitrikiTab.Home, Res.string.navigation_home),
+    DesktopDestination(HattitrikiTab.History, Res.string.navigation_matches),
+    DesktopDestination(HattitrikiTab.Players, Res.string.navigation_rankings)
 )
 
-private val desktopAdminDestination = DesktopDestination(Screens.Admin, Res.string.navigation_manager_area)
+private val desktopAdminDestination = DesktopDestination(
+    HattitrikiTab.Admin,
+    Res.string.navigation_manager_area
+)
 
 @Composable
 private fun DesktopWebTopBar(
@@ -793,7 +875,8 @@ private fun DesktopWebTopBar(
     canNavigateBack: Boolean,
     isAdmin: Boolean,
     onBack: () -> Unit,
-    onNavigate: (Screens) -> Unit,
+    onNavigate: (HattitrikiTab) -> Unit,
+    onOpenSettings: () -> Unit,
     onLogout: () -> Unit
 ) {
     Column(
@@ -816,7 +899,7 @@ private fun DesktopWebTopBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
-                    onClick = { onNavigate(Screens.Home) },
+                    onClick = { onNavigate(HattitrikiTab.Home) },
                     contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp),
                     colors = ButtonDefaults.textButtonColors(contentColor = CrestWhite)
                 ) {
@@ -879,9 +962,9 @@ private fun DesktopWebTopBar(
                     desktopDestinations
                 }
                 visibleDestinations.forEach { destination ->
-                    val selected = currentTopLevelScreen == destination.screen
+                    val selected = HattitrikiTab.from(currentTopLevelScreen) == destination.tab
                     TextButton(
-                        onClick = { onNavigate(destination.screen) },
+                        onClick = { onNavigate(destination.tab) },
                         shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.textButtonColors(
                             containerColor = if (selected) CrestGold else Color.Transparent,
@@ -896,15 +979,7 @@ private fun DesktopWebTopBar(
                     }
                 }
 
-                TextButton(
-                    onClick = onLogout,
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = CrestWhite.copy(alpha = 0.78f)
-                    )
-                ) {
-                    Text(stringResource(Res.string.action_sign_out), fontWeight = FontWeight.SemiBold)
-                }
+                AccountMenu(onOpenSettings = onOpenSettings, onLogout = onLogout)
             }
         }
         HorizontalDivider(

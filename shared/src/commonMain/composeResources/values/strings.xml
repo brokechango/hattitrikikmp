@@ -17,6 +17,7 @@
     <string name="navigation_home">Inicio</string>
     <string name="navigation_matches">Partidos</string>
     <string name="navigation_rankings">Clasificaciones</string>
+    <string name="navigation_profile">Perfil</string>
     <string name="navigation_manager">Míster</string>
     <string name="navigation_manager_area">Zona míster</string>
 

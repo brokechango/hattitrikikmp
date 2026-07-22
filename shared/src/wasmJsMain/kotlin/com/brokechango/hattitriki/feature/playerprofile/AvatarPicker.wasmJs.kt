@@ -53,7 +53,7 @@ actual fun rememberAvatarPicker(
 
 /**
  * Browser implementation: it accepts the two server-approved types and emits a
- * centered square JPEG capped under the Storage bucket's 300 KB policy.
+ * centered square JPEG capped under the Storage bucket's 2.5 MB policy.
  */
 @OptIn(ExperimentalWasmJsInterop::class)
 @JsFun(
@@ -87,11 +87,11 @@ actual fun rememberAvatarPicker(
                             if (!context) throw new Error('Tu navegador no permite optimizar la foto.');
                             context.drawImage(image, startX, startY, crop, crop, 0, 0, dimension, dimension);
                             blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
-                            if (blob && blob.size <= 307200) break;
+                            if (blob && blob.size <= 2500000) break;
                         }
                         URL.revokeObjectURL(sourceUrl);
-                        if (!blob || blob.size > 307200) {
-                            throw new Error('No se ha podido optimizar la foto por debajo de 300 KB.');
+                        if (!blob || blob.size > 2500000) {
+                            throw new Error('No se ha podido optimizar la foto por debajo de 2,5 MB.');
                         }
                         const data = new Uint8Array(await blob.arrayBuffer());
                         let binary = '';

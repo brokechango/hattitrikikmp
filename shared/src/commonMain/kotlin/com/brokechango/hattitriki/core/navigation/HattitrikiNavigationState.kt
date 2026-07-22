@@ -21,18 +21,30 @@ import androidx.navigation3.runtime.rememberNavBackStack
 fun rememberHattitrikiNavigationState(isAdmin: Boolean = true): HattitrikiNavigationState {
     val homeBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Home)
     val historyBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.History)
-    val playersBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Players)
+    val playersBackStack = rememberNavBackStack(
+        screensSavedStateConfiguration,
+        Screens.Players(openTime = 0L)
+    )
     val adminBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Admin)
+    val profileBackStack = rememberNavBackStack(screensSavedStateConfiguration, Screens.Settings)
     val selectedTab = rememberSaveable(isAdmin) { mutableStateOf(HattitrikiTab.Home.name) }
 
-    return remember(selectedTab, homeBackStack, historyBackStack, playersBackStack, adminBackStack) {
+    return remember(
+        selectedTab,
+        homeBackStack,
+        historyBackStack,
+        playersBackStack,
+        adminBackStack,
+        profileBackStack
+    ) {
         HattitrikiNavigationState(
             selectedTab = selectedTab,
             tabBackStacks = mapOf(
                 HattitrikiTab.Home to homeBackStack,
                 HattitrikiTab.History to historyBackStack,
                 HattitrikiTab.Players to playersBackStack,
-                HattitrikiTab.Admin to adminBackStack
+                HattitrikiTab.Admin to adminBackStack,
+                HattitrikiTab.Profile to profileBackStack
             )
         )
     }
@@ -51,26 +63,30 @@ class HattitrikiNavigationState internal constructor(
         get() = activeBackStack.last() as Screens
 
     val currentTopLevelScreen: Screens
-        get() = activeTab.screen
+        get() = activeBackStack.first() as Screens
 
     val canNavigateBack: Boolean
         get() = activeBackStack.size > 1 || activeTab != HattitrikiTab.Home
 
     fun selectTopLevel(screen: Screens) {
         val tab = HattitrikiTab.from(screen)
-        tabBackStacks.getValue(tab).retainRoot()
+        tabBackStacks.getValue(tab).replaceRoot(screen)
         selectedTab.value = tab.name
         notifyHistoryDelegate()
+    }
+
+    internal fun selectTopLevel(tab: HattitrikiTab) {
+        selectTopLevel(tab.newRootScreen())
     }
 
     fun navigate(screen: Screens) {
         val topLevelTab = HattitrikiTab.fromOrNull(screen)
         if (topLevelTab != null) {
-            selectedTab.value = topLevelTab.name
+            selectTopLevel(screen)
         } else {
             activeBackStack.add(screen)
+            notifyHistoryDelegate()
         }
-        notifyHistoryDelegate()
     }
 
     fun navigateBack() {
@@ -131,6 +147,11 @@ class HattitrikiNavigationState internal constructor(
             removeAt(lastIndex)
         }
     }
+
+    private fun MutableList<NavKey>.replaceRoot(screen: Screens) {
+        retainRoot()
+        this[0] = screen
+    }
 }
 
 internal data class HattitrikiNavigationSnapshot(
@@ -148,14 +169,25 @@ internal interface HattitrikiNavigationHistoryDelegate {
 internal enum class HattitrikiTab(val screen: Screens) {
     Home(Screens.Home),
     History(Screens.History),
-    Players(Screens.Players),
-    Admin(Screens.Admin);
+    Players(Screens.Players(openTime = 0L)),
+    Admin(Screens.Admin),
+    Profile(Screens.Settings);
 
     companion object {
         fun from(screen: Screens): HattitrikiTab = checkNotNull(fromOrNull(screen)) {
             "Match detail is not a top-level destination."
         }
 
-        fun fromOrNull(screen: Screens): HattitrikiTab? = entries.firstOrNull { it.screen == screen }
+        fun fromOrNull(screen: Screens): HattitrikiTab? = when (screen) {
+            is Screens.Players -> Players
+            else -> entries.firstOrNull { it.screen == screen }
+        }
+    }
+
+    fun newRootScreen(): Screens = when (this) {
+        Players -> Screens.Players(
+            openTime = kotlin.time.Clock.System.now().toEpochMilliseconds()
+        )
+        else -> screen
     }
 }

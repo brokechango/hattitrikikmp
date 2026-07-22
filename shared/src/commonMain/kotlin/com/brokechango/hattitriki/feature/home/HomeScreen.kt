@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -40,6 +41,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -50,6 +52,7 @@ import androidx.compose.ui.zIndex
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.brokechango.hattitriki.core.design.CrestGold
 import com.brokechango.hattitriki.core.design.CrestGoldLight
+import com.brokechango.hattitriki.core.model.FriendlyMatch
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 import com.brokechango.hattitriki.ui.composables.FootballCard
 import com.brokechango.hattitriki.ui.composables.HattitrikiPullToRefresh
@@ -58,6 +61,9 @@ import com.brokechango.hattitriki.ui.composables.ScorePill
 import com.brokechango.hattitriki.ui.composables.ScreenTitle
 import com.brokechango.hattitriki.ui.composables.SupabaseLoadingState
 import com.brokechango.hattitriki.ui.icons.rankingEmojiResource
+import com.brokechango.hattitriki.ui.preview.HattitrikiPreview
+import com.brokechango.hattitriki.ui.preview.PreviewTargets
+import com.github.panpf.sketch.AsyncImage
 import hattitriki.shared.generated.resources.Res
 import hattitriki.shared.generated.resources.*
 import org.jetbrains.compose.resources.painterResource
@@ -185,6 +191,7 @@ fun HomeScreen(
         }
         FeaturedStatsGrid(
             stats = uiState.featuredStats,
+            avatarUrlsByPlayerId = uiState.avatarUrlsByPlayerId,
             onOpenRanking = { category -> onEvent(HomeEvent.OpenPlayers(category)) },
             onOrderChanged = viewModel::updateFeaturedStatsOrder
         )
@@ -251,6 +258,7 @@ private fun HomeLoadingState(modifier: Modifier = Modifier) {
 @Composable
 private fun FeaturedStatsGrid(
     stats: List<HomeFeaturedStat>,
+    avatarUrlsByPlayerId: Map<String, String>,
     onOpenRanking: (PlayerRankingCategory) -> Unit,
     onOrderChanged: (List<PlayerRankingCategory>) -> Unit,
     modifier: Modifier = Modifier
@@ -341,6 +349,7 @@ private fun FeaturedStatsGrid(
 
                     FeaturedStatCard(
                         stat = stat,
+                        avatarUrl = avatarUrlsByPlayerId[stat.playerId],
                         onClick = { onOpenRanking(stat.category) },
                         modifier = Modifier
                             .offset {
@@ -429,6 +438,7 @@ private fun FeaturedStatsGrid(
 @Composable
 private fun FeaturedStatCard(
     stat: HomeFeaturedStat,
+    avatarUrl: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -437,6 +447,7 @@ private fun FeaturedStatCard(
             .clickable(onClick = onClick)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
+            FeaturedPlayerBackground(avatarUrl = avatarUrl)
             Box(
                 modifier = Modifier
                     .align(Alignment.TopStart)
@@ -504,6 +515,23 @@ private fun FeaturedStatCard(
 }
 
 @Composable
+private fun FeaturedPlayerBackground(
+    avatarUrl: String?
+) {
+    if (avatarUrl == null) return
+
+    AsyncImage(
+        uri = avatarUrl,
+        contentDescription = null,
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth(0.56f)
+            .graphicsLayer(alpha = 0.18f),
+        contentScale = ContentScale.Crop
+    )
+}
+
+@Composable
 private fun StatIcon(
     category: PlayerRankingCategory,
     modifier: Modifier = Modifier
@@ -520,5 +548,72 @@ private fun StatIcon(
             contentDescription = category.title,
             modifier = Modifier.size(22.dp)
         )
+    }
+}
+
+@PreviewTargets
+@Composable
+private fun HomeScreenPreview() {
+    val state = HomeUiState(
+        latestMatch = FriendlyMatch(
+            id = "match-1",
+            dateLabel = "22 jul 2026",
+            teamAScore = 4,
+            teamBScore = 3,
+            players = emptyList(),
+            goals = emptyList()
+        ),
+        totalMatches = 12,
+        totalGoals = 73,
+        featuredStats = listOf(
+            HomeFeaturedStat(PlayerRankingCategory.TOP_SCORER, "1", "Arturo", "15"),
+            HomeFeaturedStat(PlayerRankingCategory.GOALS_PER_MATCH, "2", "Marta", "1,8"),
+            HomeFeaturedStat(PlayerRankingCategory.ZAMORA, "3", "Nico", "1,1"),
+            HomeFeaturedStat(PlayerRankingCategory.MOST_PLAYED, "4", "Laura", "12")
+        ),
+        isLoading = false
+    )
+
+    HattitrikiPreview {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ScreenTitle(
+                title = "Hattitriki FC",
+                subtitle = "Resultados y estadísticas de la liga"
+            )
+            FootballCard(modifier = Modifier.fillMaxWidth(), highlight = true) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("ÚLTIMO RESULTADO", color = CrestGold, fontWeight = FontWeight.Black)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Equipo A", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                        ScorePill(score = "${state.latestMatch?.teamAScore} - ${state.latestMatch?.teamBScore}")
+                        Text("Equipo B", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("TEMPORADA", color = CrestGold, fontWeight = FontWeight.Black)
+                Text("Estadísticas de la liga", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black)
+                Text(
+                    "${state.totalMatches} partidos · ${state.totalGoals} goles",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            FeaturedStatsGrid(
+                stats = state.featuredStats,
+                avatarUrlsByPlayerId = emptyMap(),
+                onOpenRanking = {},
+                onOrderChanged = {}
+            )
+        }
     }
 }

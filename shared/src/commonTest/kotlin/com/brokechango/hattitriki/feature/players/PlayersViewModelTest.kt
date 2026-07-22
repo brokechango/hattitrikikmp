@@ -40,6 +40,36 @@ class PlayersViewModelTest {
     }
 
     @Test
+    fun detailedViewMarksAPlayerWhoMissedAMatchWithAGrayFormSlot() {
+        val alex = Player(id = "alex", name = "Alex")
+        val bruno = Player(id = "bruno", name = "Bruno")
+        val snapshot = FootballSnapshot(
+            players = listOf(alex, bruno),
+            matches = listOf(
+                match("5", 2, 1),
+                match("4", 0, 1, includeAlex = false),
+                match("3", 3, 1),
+                match("2", 1, 0),
+                match("1", 0, 2)
+            )
+        )
+        val viewModel = PlayersViewModel(initialSnapshot = snapshot)
+
+        val alexForm = viewModel.uiState.value.rankings.first { it.stats.player.id == alex.id }.recentForm
+
+        assertEquals(
+            listOf(
+                PlayerMatchResult.WIN,
+                PlayerMatchResult.DID_NOT_PLAY,
+                PlayerMatchResult.WIN,
+                PlayerMatchResult.WIN,
+                PlayerMatchResult.LOSS
+            ),
+            alexForm
+        )
+    }
+
+    @Test
     fun changingCategoryKeepsTheChosenRankingView() {
         val viewModel = PlayersViewModel(initialSnapshot = leagueSnapshot())
 
@@ -108,13 +138,18 @@ class PlayersViewModelTest {
         )
     }
 
-    private fun match(id: String, teamAScore: Int, teamBScore: Int) = FriendlyMatch(
+    private fun match(
+        id: String,
+        teamAScore: Int,
+        teamBScore: Int,
+        includeAlex: Boolean = true
+    ) = FriendlyMatch(
         id = id,
         dateLabel = id,
         teamAScore = teamAScore,
         teamBScore = teamBScore,
-        players = listOf(
-            MatchPlayer(playerId = "alex", team = TeamSide.A),
+        players = listOfNotNull(
+            if (includeAlex) MatchPlayer(playerId = "alex", team = TeamSide.A) else null,
             MatchPlayer(playerId = "bruno", team = TeamSide.B)
         ),
         goals = emptyList()

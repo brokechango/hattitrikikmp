@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.brokechango.hattitriki.core.data.FootballSnapshot
 import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.PlayerAvatarUrlsResult
+import com.brokechango.hattitriki.core.data.PlayerProfileRepository
 import com.brokechango.hattitriki.core.data.goalsAgainstShareByGoalkeeperId
 import com.brokechango.hattitriki.core.data.playerStats
 import com.brokechango.hattitriki.core.model.PlayerStats
@@ -17,7 +19,8 @@ import kotlin.math.round
 
 class HomeViewModel(
     private val repository: FriendlyFootballRepository?,
-    private val statsOrderStore: HomeStatsOrderStore = NoOpHomeStatsOrderStore
+    private val statsOrderStore: HomeStatsOrderStore = NoOpHomeStatsOrderStore,
+    private val profileRepository: PlayerProfileRepository? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -76,7 +79,7 @@ class HomeViewModel(
         }
     }
 
-    private fun updateFromSnapshot(snapshot: FootballSnapshot) {
+    private suspend fun updateFromSnapshot(snapshot: FootballSnapshot) {
         val stats = snapshot.playerStats()
         _uiState.value = HomeUiState(
             latestMatch = snapshot.matches.firstOrNull(),
@@ -88,6 +91,17 @@ class HomeViewModel(
             isLoading = false,
             isRefreshing = false
         )
+        loadAvatarUrls()
+    }
+
+    private suspend fun loadAvatarUrls() {
+        val repository = profileRepository ?: return
+        when (val result = repository.loadLeagueAvatarUrls()) {
+            is PlayerAvatarUrlsResult.Success -> _uiState.value = _uiState.value.copy(
+                avatarUrlsByPlayerId = result.avatarUrlsByPlayerId
+            )
+            is PlayerAvatarUrlsResult.Failure -> Unit
+        }
     }
 
     private fun buildFeaturedStats(
@@ -122,6 +136,7 @@ class HomeViewModel(
             topScorer?.let {
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.TOP_SCORER,
+                    playerId = it.player.id,
                     playerName = it.player.name,
                     value = it.goals.toString()
                 )
@@ -129,6 +144,7 @@ class HomeViewModel(
             topGoalsPerMatch?.let {
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.GOALS_PER_MATCH,
+                    playerId = it.player.id,
                     playerName = it.player.name,
                     value = formatPerMatch(it.goals, it.matchesPlayed)
                 )
@@ -136,6 +152,7 @@ class HomeViewModel(
             bestGoalkeeper?.let { (playerStats, goalsAgainst) ->
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.ZAMORA,
+                    playerId = playerStats.player.id,
                     playerName = playerStats.player.name,
                     value = formatGoals(goalsAgainst)
                 )
@@ -143,6 +160,7 @@ class HomeViewModel(
             bestGoalkeeperPerMatch?.let { (playerStats, goalsAgainst) ->
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.GOALS_CONCEDED_PER_MATCH,
+                    playerId = playerStats.player.id,
                     playerName = playerStats.player.name,
                     value = formatPerMatch(goalsAgainst, playerStats.goalkeeperMatches)
                 )
@@ -150,6 +168,7 @@ class HomeViewModel(
             mostPlayed?.let {
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.MOST_PLAYED,
+                    playerId = it.player.id,
                     playerName = it.player.name,
                     value = it.matchesPlayed.toString()
                 )
@@ -157,6 +176,7 @@ class HomeViewModel(
             mostWins?.let {
                 HomeFeaturedStat(
                     category = PlayerRankingCategory.MOST_WINS,
+                    playerId = it.player.id,
                     playerName = it.player.name,
                     value = it.wins.toString()
                 )

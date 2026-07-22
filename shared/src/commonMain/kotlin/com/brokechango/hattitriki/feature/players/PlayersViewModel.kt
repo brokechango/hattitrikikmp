@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.brokechango.hattitriki.core.data.FootballSnapshot
 import com.brokechango.hattitriki.core.data.FootballSnapshotResult
 import com.brokechango.hattitriki.core.data.FriendlyFootballRepository
+import com.brokechango.hattitriki.core.data.PlayerAvatarUrlsResult
+import com.brokechango.hattitriki.core.data.PlayerProfileRepository
 import com.brokechango.hattitriki.core.data.goalsAgainstShareByGoalkeeperId
 import com.brokechango.hattitriki.core.data.playerStats
 import com.brokechango.hattitriki.core.model.PlayerRankingCategory
@@ -18,6 +20,7 @@ import kotlinx.coroutines.withContext
 
 class PlayersViewModel(
     private val repository: FriendlyFootballRepository? = null,
+    private val profileRepository: PlayerProfileRepository? = null,
     initialSnapshot: FootballSnapshot? = null
 ) : ViewModel() {
     private var rankingsByCategory: Map<PlayerRankingCategory, List<PlayerRankingEntry>> = emptyMap()
@@ -33,7 +36,11 @@ class PlayersViewModel(
 
     /** Reloads when the user actually opens Clasificaciones. */
     fun refresh() {
-        _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+        _uiState.value = _uiState.value.copy(
+            isLoading = true,
+            avatarUrlsByPlayerId = emptyMap(),
+            errorMessage = null
+        )
         loadLeague()
     }
 
@@ -62,11 +69,22 @@ class PlayersViewModel(
                     result.snapshot.prepareRankings()
                 }
                 applyPreparedRankings(preparedRankings)
+                loadAvatarUrls()
             }
             is FootballSnapshotResult.Failure -> _uiState.value = _uiState.value.copy(
                 isLoading = false,
                 errorMessage = result.message
             )
+        }
+    }
+
+    private suspend fun loadAvatarUrls() {
+        val repository = profileRepository ?: return
+        when (val result = repository.loadLeagueAvatarUrls()) {
+            is PlayerAvatarUrlsResult.Success -> _uiState.value = _uiState.value.copy(
+                avatarUrlsByPlayerId = result.avatarUrlsByPlayerId
+            )
+            is PlayerAvatarUrlsResult.Failure -> Unit
         }
     }
 
@@ -172,22 +190,19 @@ private fun FootballSnapshot.prepareRankings(): PreparedRankings {
 }
 
 private fun FootballSnapshot.recentFormByPlayerId(): Map<String, List<PlayerMatchResult>> {
-    val forms = mutableMapOf<String, MutableList<PlayerMatchResult>>()
-    matches.forEach { match ->
-        val playersAlreadyProcessed = mutableSetOf<String>()
-        match.players.forEach { participant ->
-            if (!playersAlreadyProcessed.add(participant.playerId)) return@forEach
-            val playerForm = forms.getOrPut(participant.playerId) { mutableListOf() }
-            if (playerForm.size < 5) {
-                playerForm += when (match.winner) {
-                    participant.team -> PlayerMatchResult.WIN
-                    null -> PlayerMatchResult.DRAW
-                    else -> PlayerMatchResult.LOSS
-                }
+    val recentMatches = matches.take(5)
+    return players.associate { player ->
+        player.id to recentMatches.map { match ->
+            val participant = match.players.firstOrNull { it.playerId == player.id }
+                ?: return@map PlayerMatchResult.DID_NOT_PLAY
+
+            when (match.winner) {
+                participant.team -> PlayerMatchResult.WIN
+                null -> PlayerMatchResult.DRAW
+                else -> PlayerMatchResult.LOSS
             }
         }
     }
-    return forms
 }
 
 private fun formatPerMatch(total: Int, matches: Int): String {

@@ -6,6 +6,7 @@ import com.brokechango.hattitriki.core.model.PlayerRankingCategory
 data class PlayersUiState(
     val selectedCategory: PlayerRankingCategory = PlayerRankingCategory.TOP_SCORER,
     val rankings: List<PlayerRankingEntry> = emptyList(),
+    val avatarUrlsByPlayerId: Map<String, String> = emptyMap(),
     val rankingView: RankingView = RankingView.COMPACT,
     val isLoading: Boolean = true,
     val errorMessage: String? = null
@@ -26,5 +27,6 @@ enum class RankingView(val label: String) {
 enum class PlayerMatchResult(val label: String) {
     WIN("V"),
     DRAW("E"),
-    LOSS("D")
+    LOSS("D"),
+    DID_NOT_PLAY("")
 }
